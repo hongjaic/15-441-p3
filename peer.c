@@ -86,7 +86,7 @@ void local_chunks_init(char *has_chunk_file)
 
 
 
-void process_get(char *chunkfile, char *outputfile) {
+void process_cmd(char *chunkfile, char *outputfile) {
 
 	FILE *chunk_fd = fopen(chunkfile,"r");
 	int chunk_num = 0;
@@ -109,7 +109,7 @@ void process_get(char *chunkfile, char *outputfile) {
 	}
 	fclose(chunk_fd);
 
-		
+	set_files(outputfile,config.has_chunk_file);	
 	send_whohas(config.peers,config.identity,chunk_num,hashes);
 
 
@@ -126,14 +126,13 @@ void handle_user_input(char *line, void *cbdata)
 	{
 		if (strlen(outf) > 0) 
 		{
-	      process_get(chunkf, outf);
+	      process_cmd(chunkf, outf);
     	}
   	}
 }
 
 void process_inbound_udp(int sock) 
 {
-	#define BUFLEN 1500
 	struct sockaddr_in from;
 	socklen_t fromlen;
 	char buf[BUFLEN];
@@ -194,7 +193,6 @@ void peer_run(bt_config_t *config)
 
     		if (FD_ISSET(sock, &readfds)) 
 			{
-				printf("ok!!\n");
 				process_inbound_udp(sock);
     		}
     	  

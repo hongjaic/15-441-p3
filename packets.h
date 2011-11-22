@@ -52,7 +52,7 @@ typedef struct get
    char hash[HASHLEN];
 }get_packet_t;
 
-typedef struct data
+typedef struct _data
 {
    header_t header;
    char data[BUFLEN];
@@ -74,5 +74,6 @@ typedef struct denied
 void packet_handler(struct sockaddr_in *toaddr,void *packet, chunks_t *local_chunks);
 void *bytes_to_packet(char *buf, int size);
 void send_whohas(bt_peer_t *peers,int id, int num_chunks, char *all_chunks);
+void set_files(char *out, char *has);
 #endif
 

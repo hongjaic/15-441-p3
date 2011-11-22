@@ -12,8 +12,10 @@
 
 
 #define HEADERLEN   		16
-#define BUFLEN              1500   
 #define HASHLEN			    40
+#define BUFLEN              1500-HEADERLEN   
+
+#define CHUNKLEN			512000
 #define PAD					0
 #define MAGIC				15441
 #define VERSION				1
@@ -25,6 +27,8 @@
 #define TYPE_DATA           0x00000011
 #define TYPE_ACK            0x00000100
 #define TYPE_DENIED         0x00000101
+
+#define MASTER_DATA_FILE    "tmp/C.tar"
 
 
 

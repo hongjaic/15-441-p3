@@ -30,20 +30,19 @@ ssize_t spiffy_sendto(int s, const void *msg, size_t len, int flags, const struc
 	if (to->sa_family == AF_INET) {
         	s_head.lDestAddr = ((struct sockaddr_in*)to)->sin_addr.s_addr;
         	s_head.lDestPort = ((struct sockaddr_in*)to)->sin_port;
-		 printf ("Sending to %s:%hd\n", inet_ntoa(((struct sockaddr_in*)to)->sin_addr), ntohs(((struct sockaddr_in*)to)->sin_port));
+		// printf ("Sending to %s:%hd\n", inet_ntoa(((struct sockaddr_in*)to)->sin_addr), ntohs(((struct sockaddr_in*)to)->sin_port));
 	} else {
 		fprintf(stderr, "spiffy_sendto:  must specify AF_INET.  FIX YOUR CODE.\n");
 		errno = ENOTSUP;
 		return -1;
-	}	s_head.ID = htonl(glNodeID);
+	}	
+	s_head.ID = htonl(glNodeID);
 	s_head.lSrcAddr = glSrcAddr;
 	s_head.lSrcPort = gsSrcPort;
 
 	memcpy(newbuf + sizeof(spiffy_header), msg, len);
 	memcpy(newbuf, &s_head, sizeof(spiffy_header));
-	//gsSpiffyRouter.sin_port = htons(2222);
 	int retVal = sendto(s, newbuf, len + sizeof(spiffy_header), flags, (struct sockaddr *) &gsSpiffyRouter, sizeof(gsSpiffyRouter));
-	//printf("now sending to: %s::%d\n",inet_ntoa(gsSpiffyRouter.sin_addr),ntohs(gsSpiffyRouter.sin_port));
 	free(newbuf);
         if (retVal > 0) retVal -= sizeof(spiffy_header);
 	return retVal;
