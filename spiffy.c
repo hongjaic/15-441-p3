@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <errno.h>
 #include <arpa/inet.h>
+#include <errno.h>
 
 #include "spiffy.h"
 
@@ -30,7 +31,7 @@ ssize_t spiffy_sendto(int s, const void *msg, size_t len, int flags, const struc
 	if (to->sa_family == AF_INET) {
         	s_head.lDestAddr = ((struct sockaddr_in*)to)->sin_addr.s_addr;
         	s_head.lDestPort = ((struct sockaddr_in*)to)->sin_port;
-		// printf ("Sending to %s:%hd\n", inet_ntoa(((struct sockaddr_in*)to)->sin_addr), ntohs(((struct sockaddr_in*)to)->sin_port));
+		 printf ("Sending to %s:%hd\n", inet_ntoa(((struct sockaddr_in*)to)->sin_addr), ntohs(((struct sockaddr_in*)to)->sin_port));
 	} else {
 		fprintf(stderr, "spiffy_sendto:  must specify AF_INET.  FIX YOUR CODE.\n");
 		errno = ENOTSUP;
@@ -45,6 +46,7 @@ ssize_t spiffy_sendto(int s, const void *msg, size_t len, int flags, const struc
 	int retVal = sendto(s, newbuf, len + sizeof(spiffy_header), flags, (struct sockaddr *) &gsSpiffyRouter, sizeof(gsSpiffyRouter));
 	free(newbuf);
         if (retVal > 0) retVal -= sizeof(spiffy_header);
+		else printf("|spiffy_sendto| %s\n",strerror(errno));
 	return retVal;
 }
 

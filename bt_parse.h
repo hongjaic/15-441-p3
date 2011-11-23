@@ -55,5 +55,5 @@ void bt_parse_command_line(bt_config_t *c);
 void bt_parse_peer_list(bt_config_t *c);
 void bt_dump_config(bt_config_t *c);
 bt_peer_t *bt_peer_info(const bt_config_t *c, int peer_id);
-
+bt_peer_t *bt_peer_info2(const bt_config_t *c, struct sockaddr_in * from);
 #endif /* _BT_PARSE_H_ */

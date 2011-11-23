@@ -11,7 +11,7 @@
 #include "bt_parse.h"
 #include "spiffy.h"
 
-
+FILE *master_fd; 
 
 int CHUNKS_PER_PACKET = ((BUFLEN - HEADERLEN)/HASHLEN);
 FILE  *out;
@@ -219,12 +219,12 @@ void send_next_data(bt_peer_t *peer,int sock,int hash_id)
 	int bytes_read = BUFLEN;
 
 	int left = CHUNKLEN - peer->bytes_sent;
-	int offset = hash_id*HASHLEN + peer->bytes_sent;
-	printf("offset: %d\n",offset);
-	FILE *master_fd = fopen(MASTER_DATA_FILE,"r");
-	assert(master_fd!=NULL);
-	fseek(master_fd,offset,SEEK_SET);
+	int offset = hash_id*CHUNKLEN + peer->bytes_sent;
 
+	
+	printf("hash offset: %d, data offset from hash %d\n", hash_id*CHUNKLEN,peer->bytes_sent);
+
+	fseek(master_fd,offset,SEEK_SET);
 
 	if(left < BUFLEN)
 	{ 
@@ -241,14 +241,16 @@ void send_next_data(bt_peer_t *peer,int sock,int hash_id)
 
 
 	fgets(data,bytes_read,master_fd);
-	fclose(master_fd);
+
 	data_p = create_data(data,seqnum,bytes_read);
 
+	
  	spiffy_sendto(sock,(void *)data_p,data_p->header.packet_len,0,(struct sockaddr *)&(peer->addr),sizeof(peer->addr));
-	free(data_p);
 	peer->bytes_sent+=bytes_read;	
 	printf("sending seq %d,total %d --(%d)\n",seqnum,peer->bytes_sent,bytes_read);
-
+	
+	free(data_p);
+	
 }
 
 void get_handler(bt_peer_t *peer, bt_peer_t *me, get_packet_t *get)
@@ -257,6 +259,7 @@ void get_handler(bt_peer_t *peer, bt_peer_t *me, get_packet_t *get)
 	int sock = socket(AF_INET, SOCK_DGRAM, 0);
 	if(me->his_request != NULL)
 	{
+		printf("DENIALLLL!!!\n");
 		denied_packet_t * denied = create_denied();
 		spiffy_sendto(sock,(void *)denied,denied->header.packet_len,0,(struct sockaddr *)(&peer->addr),sizeof(peer->addr));
 		free(denied);
@@ -271,7 +274,8 @@ void get_handler(bt_peer_t *peer, bt_peer_t *me, get_packet_t *get)
 	printf("received GET for chunk %s\n",get->hash);
 	peer->hash_id = get_hash_id(peer->his_request->hash);
 
-	
+	master_fd = fopen(MASTER_DATA_FILE,"r");
+	assert(master_fd != NULL);
 	send_next_data(peer,sock,peer->hash_id);
 	//close(sock);
 
@@ -285,15 +289,15 @@ void data_handler(bt_peer_t *peer,int sock, data_packet_t *data_p, FILE *out)
 	fwrite(data_p->data,1,size,out);
 	peer->bytes_received+=size;
 	ack = create_ack(data_p->header.seq_num);
-	spiffy_sendto(sock,(void *)ack,ack->header.packet_len,0,(struct sockaddr *)&(peer->addr),sizeof(peer->addr));
-	printf("received seq %d, total %d --(%d)\n",data_p->header.seq_num,peer->bytes_received,size);	
+	printf("received seq %d, total %d --(%d)\n",data_p->header.seq_num,peer->bytes_received,size);
+    spiffy_sendto(sock,(void *)ack,ack->header.packet_len,0,(struct sockaddr *)&(peer->addr),sizeof(peer->addr));
+		
 	if(peer->bytes_received == CHUNKLEN)
 	{
 		peer->bytes_received=0;
 		peer->chunks_fetched++;
 		if(peer->chunks_fetched < peer->hehas->chunks.num_chunks)
 		{
-
 			get_next_chunk(peer,sock);
 		}
 		else
@@ -319,29 +323,37 @@ void data_handler(bt_peer_t *peer,int sock, data_packet_t *data_p, FILE *out)
 void ack_handler(bt_peer_t *peer,bt_peer_t *me, ack_packet_t *ack)
 {
 	
-  	int sock = socket(AF_INET, SOCK_DGRAM, 0);
+  	int sock;
+	sock = socket(AF_INET, SOCK_DGRAM, 0);
 	int should_be = 1;
 	if(peer->lastack == NULL)
 	{
 		should_be =1;
 	}else
 	{
+
+		if(peer->lastack->header.ack_num == 150)
+		{
+			printf("herere\n");
+		}	
 		should_be = peer->lastack->header.ack_num+1;
 	}
 	if(ack->header.ack_num == should_be)
 	{
+		printf("got ack %d\n",ack->header.ack_num);
 		if(peer->bytes_sent < CHUNKLEN)
 		{
-			printf("got ack %d\n",ack->header.ack_num);
 			peer->lastack = ack;
 			send_next_data(peer,sock,peer->hash_id);
 		}
 		else if (peer->bytes_sent == CHUNKLEN)
 		{
+			
 			me->his_request = NULL;
 			peer->his_request = NULL;
 			peer->lastack = NULL;
 			peer->bytes_sent = 0;
+			fclose(master_fd);
 
 		}
 
@@ -352,7 +364,7 @@ void ack_handler(bt_peer_t *peer,bt_peer_t *me, ack_packet_t *ack)
 		}
 	
 	}
-	//close(sock);
+	close(sock);
 }
 
 
