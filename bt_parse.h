@@ -15,14 +15,22 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
+#include "packets.h"
 
 #define BT_FILENAME_LEN 255
 #define BT_MAX_PEERS 1024
 
 typedef struct bt_peer_s {
-  short  id;
-  struct sockaddr_in addr;
-  struct bt_peer_s *next;
+	short  id;
+	ihave_packet_t *hehas;
+	int chunks_fetched;
+	int bytes_received;
+	int bytes_sent;
+	ack_packet_t *lastack;
+	get_packet_t *his_request;
+	int hash_id;
+	struct sockaddr_in addr;
+	struct bt_peer_s *next;
 } bt_peer_t;
 
 struct bt_config_s {

@@ -25,6 +25,7 @@ chunks_t local_chunks;
 
 void peer_run(bt_config_t *config);
 void local_chunks_init(char *has_chunk_file);
+
 int main(int argc, char **argv) {
 
 
@@ -179,7 +180,7 @@ void peer_run(bt_config_t *config)
 	myaddr.sin_family = AF_INET;
 	myaddr.sin_addr.s_addr = htonl(INADDR_ANY);
 	myaddr.sin_port = htons(config->myport);
-  printf("bound to %s port %d\n",inet_ntoa(myaddr.sin_addr),ntohs(myaddr.sin_port));
+    printf("bound to %s port %d\n",inet_ntoa(myaddr.sin_addr),ntohs(myaddr.sin_port));
 	if (bind(sock, (struct sockaddr *) &myaddr, sizeof(myaddr)) == -1) 
 	{
 	    perror("peer_run could not bind socket");

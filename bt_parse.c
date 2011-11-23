@@ -63,6 +63,21 @@ bt_peer_t *bt_peer_info(const bt_config_t *config, int peer_id)
   return NULL;
 }
  
+
+
+bt_peer_t *bt_peer_info2(const bt_config_t *config,struct sockaddr_in *from )
+{
+  assert(config != NULL);
+
+  bt_peer_t *p;
+  for (p = config->peers; p != NULL; p = p->next) {
+    if (p->addr.sin_port == from->sin_port) {
+      return p;
+    }
+  }
+  return NULL;
+}
+
 void bt_parse_command_line(bt_config_t *config) {
   int c, old_optind;
   bt_peer_t *p;
