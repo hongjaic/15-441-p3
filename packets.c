@@ -332,7 +332,7 @@ void ack_handler(bt_peer_t *peer,bt_peer_t *me, ack_packet_t *ack)
 	{
 		if(peer->bytes_sent < CHUNKLEN)
 		{
-			//printf("got ack %d\n",ack->header.ack_num);
+			printf("got ack %d\n",ack->header.ack_num);
 			peer->lastack = ack;
 			send_next_data(peer,sock,peer->hash_id);
 		}
