@@ -28,7 +28,9 @@
 #define TYPE_ACK            'e'
 #define TYPE_DENIED         'f'
 
-#define MASTER_DATA_FILE    "tmp/wow"
+
+//Change master data file here
+#define MASTER_DATA_FILE    "tmp/C.tar"
 
 
 
