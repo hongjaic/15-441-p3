@@ -65,6 +65,7 @@ void local_chunks_init(char *has_chunk_file)
 	assert(fd != NULL);
 	char *hash;
     local_chunks.num_chunks = 0;
+	set_hasfile(has_chunk_file);
 	while(fgets(buf,BUFLEN,fd) != NULL)
 	{
     	local_chunks.num_chunks++;		
@@ -89,6 +90,9 @@ void local_chunks_init(char *has_chunk_file)
 void process_cmd(char *chunkfile, char *outputfile) {
 
 	FILE *chunk_fd = fopen(chunkfile,"r");
+	assert(chunk_fd!=NULL);	
+	FILE *out_fd = fopen(outputfile,"a");	
+	assert(out_fd!=NULL);	
 	int chunk_num = 0;
 	char *hash, *hashes;
 	int offset = 0;
@@ -109,8 +113,9 @@ void process_cmd(char *chunkfile, char *outputfile) {
 	}
 	fclose(chunk_fd);
 
-	set_files(outputfile,config.has_chunk_file);	
-	send_whohas(config.peers,config.identity,chunk_num,hashes);
+
+	set_outfile(out_fd);	
+	send_whohas((void *)config.peers,config.identity,chunk_num,hashes);
 
 
 }
@@ -131,17 +136,20 @@ void handle_user_input(char *line, void *cbdata)
   	}
 }
 
-void process_inbound_udp(int sock) 
+void process_inbound_udp(bt_peer_t *me,int sock) 
 {
 	struct sockaddr_in from;
 	socklen_t fromlen;
 	char buf[BUFLEN];
 	void *packet;
 	int len;
+	bt_peer_t *peer;
+	
 	fromlen = sizeof(from);
 	len = spiffy_recvfrom(sock, buf, BUFLEN, 0, (struct sockaddr *) &from, &fromlen);	
 	packet = bytes_to_packet(buf,len);
-	packet_handler(&from,packet,&local_chunks);
+	peer = bt_peer_info2(&config, &from);
+	packet_handler((void *)peer,(void *)me,packet,&local_chunks);
   
 }
 
@@ -150,9 +158,10 @@ void process_inbound_udp(int sock)
 void peer_run(bt_config_t *config) 
 {
   int sock;
-  struct sockaddr_in myaddr;
-  fd_set readfds;
-  struct user_iobuf *userbuf;
+	struct sockaddr_in myaddr;
+	fd_set readfds;
+	struct user_iobuf *userbuf;
+	bt_peer_t *me;	
   
 	if ((userbuf = create_userbuf()) == NULL) 
 	{
@@ -179,7 +188,7 @@ void peer_run(bt_config_t *config)
 	
   
 	spiffy_init(config->identity, (struct sockaddr *)&myaddr, sizeof(myaddr));
-  
+  	me = bt_peer_info(config, config->identity);
 	while (1)
 	{
     	int nfds;
@@ -193,7 +202,7 @@ void peer_run(bt_config_t *config)
 
     		if (FD_ISSET(sock, &readfds)) 
 			{
-				process_inbound_udp(sock);
+				process_inbound_udp(me, sock);
     		}
     	  
 			if (FD_ISSET(STDIN_FILENO, &readfds)) 
