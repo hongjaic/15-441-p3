@@ -64,6 +64,10 @@ bt_peer_t *bt_peer_info(const bt_config_t *config, int peer_id)
 }
  
 
+/*
+Added this new function that does the same as the original bt_peer_info, only it 
+uses the port to uniquely identify the peer. (used when we do not know the peer id)
+*/
 
 bt_peer_t *bt_peer_info2(const bt_config_t *config,struct sockaddr_in *from )
 {

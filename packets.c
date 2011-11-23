@@ -33,6 +33,8 @@ void *bytes_to_packet(char *buf, int size)
 	return packet;
 }
 
+
+//returns the header of the packet
 void get_header(header_t *header, void *packet)
 {
 	int header_len;
@@ -45,6 +47,8 @@ void get_header(header_t *header, void *packet)
 		
 }
 
+
+//sets the packet header
 void set_header(header_t *header,int type, int seq_num, int ack_num, int header_len, int packet_len){
 
 	header->magicnum=MAGIC;
@@ -56,7 +60,6 @@ void set_header(header_t *header,int type, int seq_num, int ack_num, int header_
 	header->ack_num = ack_num;
 	
 }
-
 
 
 
@@ -121,6 +124,14 @@ denied_packet_t * create_denied()
 
 
 
+/*
+Call whenever this peer receives a whohas packet.
+The peer compares all the packets in the whohas payload against
+his local chunks and creates a new struct with all the
+common chunks. We then create an ihave packet with and return it to the 
+source 
+*/
+
 void whohas_handler(int sock,bt_peer_t *peer,whohas_packet_t *whohas,chunks_t *local_chunks)
 {
 	int i,j;
@@ -161,6 +172,11 @@ void whohas_handler(int sock,bt_peer_t *peer,whohas_packet_t *whohas,chunks_t *l
 
 }
 
+
+
+/*
+creates a new "get" packet and asks for the next chunk from peer. 
+*/
 void get_next_chunk(int sock,bt_peer_t *peer)
 {
 	char hash[HASHLEN+1];
@@ -174,6 +190,14 @@ void get_next_chunk(int sock,bt_peer_t *peer)
 	free(get_p);
 }
 
+/*
+Gets called whenever this peer receives an "ihave" packet.
+We send a "Get" request for the first chunk in the packet.
+This will trigger a chain of events until all the chunks in this ihave packet
+have been downloaded.(Currently, we "naively" ask that peer for all of the chunks 
+in the "ihave" packet... we want to only ask him for some of them.. to do )
+
+*/
 
 void ihave_handler(int sock,bt_peer_t *peer,ihave_packet_t *hehas)
 {
@@ -190,6 +214,10 @@ void ihave_handler(int sock,bt_peer_t *peer,ihave_packet_t *hehas)
 
 }
 
+
+/*
+given a hash value, this returns the hash ID as it pertains to the master chunks data file
+*/
 int get_hash_id(char *hash)
 {
 	int id;
@@ -211,6 +239,11 @@ int get_hash_id(char *hash)
 	return -1;
 }
 
+
+/*
+
+This sends the next piece of chunk data from chunk with id = "hash_id" to the peer.
+*/
 void send_next_data(int sock,bt_peer_t *peer,int hash_id)
 {
 	int seqnum;
@@ -253,6 +286,12 @@ void send_next_data(int sock,bt_peer_t *peer,int hash_id)
 	
 }
 
+
+/*
+Called whenever we recevie a "Get" packet. We check if we are currently 
+servicing another get request, if so, send a denial packet.
+If we are free, we send the first piece of chunk data with sequence number 1
+*/
 void get_handler(int sock,bt_peer_t *peer, bt_peer_t *me, get_packet_t *get)
 {
 
@@ -278,6 +317,14 @@ void get_handler(int sock,bt_peer_t *peer, bt_peer_t *me, get_packet_t *get)
 
 }
 
+
+
+/*
+Called whenever we receive a "data" packet. we write the data to the output file
+we then create and send an ACK. (which will trigger another data packet to be sent.
+
+If we receive the last data packet of a chunk, we create a new "get" request for the next chunk that the peer advertised in his "i have" packet...
+*/
 void data_handler(int sock,bt_peer_t *peer, data_packet_t *data_p, FILE *out)
 {
 	int size = data_p->header.packet_len-data_p->header.header_len;
@@ -319,6 +366,9 @@ void data_handler(int sock,bt_peer_t *peer, data_packet_t *data_p, FILE *out)
 	
 }
 
+/*
+Called whenever we receive an "ack" packet. we verify that it is the ack we are expecting from that peer. and if so, we send the next piece of data for the chunk requested until we've sent the whole chunk
+*/
 
 void ack_handler(int sock,bt_peer_t *peer,bt_peer_t *me, ack_packet_t *ack)
 {
@@ -365,6 +415,12 @@ void denied_handler(int sock,bt_peer_t *peer, denied_packet_t * denied)
 
 }
 
+
+/*
+This is the genreic handler that gets called whenever we receive a packet.
+We do not know the packet type, so here we determine that, and call the appropriate
+handler
+*/
 void packet_handler( int sock, void *peer,void *me,void *packet, chunks_t *local_chunks)
 {
 
@@ -395,7 +451,9 @@ void packet_handler( int sock, void *peer,void *me,void *packet, chunks_t *local
 }
 
 
-
+/*
+Sends a whohas packet, to all the peers. 
+*/
 void send_whohas(void *peers, int id, int num_chunks, char *hashes)
 {
   	int sock = socket(AF_INET, SOCK_DGRAM, 0);

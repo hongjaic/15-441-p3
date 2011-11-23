@@ -34,7 +34,10 @@ int main(int argc, char **argv) {
 	bt_parse_command_line(&config);
   	assert(config.has_chunk_file != NULL);
   	bt_dump_config(&config);
-  	local_chunks_init(config.has_chunk_file);
+  	
+	//copy all of my local chunks to memory. 
+	local_chunks_init(config.has_chunk_file);
+
   	DPRINTF(DEBUG_INIT, "peer.c main beginning\n");
 
 #ifdef TESTING
@@ -57,7 +60,10 @@ int main(int argc, char **argv) {
 
 
 
-
+/*
+opens up the haschunk file for this peer, and copies
+all of the local chunk hashes to global variable "local_chunks"
+*/
 void local_chunks_init(char *has_chunk_file)
 {
 	int i;
