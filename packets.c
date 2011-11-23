@@ -121,7 +121,7 @@ denied_packet_t * create_denied()
 
 
 
-void whohas_handler(bt_peer_t *peer, int sock,whohas_packet_t *whohas,chunks_t *local_chunks)
+void whohas_handler(int sock,bt_peer_t *peer,whohas_packet_t *whohas,chunks_t *local_chunks)
 {
 	int i,j;
 	char hash[HASHLEN+1],my_hash[HASHLEN+1];
@@ -154,14 +154,14 @@ void whohas_handler(bt_peer_t *peer, int sock,whohas_packet_t *whohas,chunks_t *
 	{
 		
 	    ihave=create_ihave(&chunk_hits);	
-		printf("sending %d chunks\n",ihave->chunks.num_chunks);
+		//printf("sending %d chunks\n",ihave->chunks.num_chunks);
 		spiffy_sendto(sock,(void *)ihave,ihave->header.packet_len,0,(struct sockaddr *)(&peer->addr),sizeof(peer->addr));
 		free(ihave);
 	}	
 
 }
 
-void get_next_chunk(bt_peer_t *peer,int sock)
+void get_next_chunk(int sock,bt_peer_t *peer)
 {
 	char hash[HASHLEN+1];
 	get_packet_t *get_p;
@@ -175,7 +175,7 @@ void get_next_chunk(bt_peer_t *peer,int sock)
 }
 
 
-void ihave_handler(bt_peer_t *peer,int sock,ihave_packet_t *hehas)
+void ihave_handler(int sock,bt_peer_t *peer,ihave_packet_t *hehas)
 {
 	
 	
@@ -185,7 +185,7 @@ void ihave_handler(bt_peer_t *peer,int sock,ihave_packet_t *hehas)
 	peer->chunks_fetched = 0;
 
 
-	get_next_chunk(peer,sock);
+	get_next_chunk(sock,peer);
 	
 
 }
@@ -211,7 +211,7 @@ int get_hash_id(char *hash)
 	return -1;
 }
 
-void send_next_data(bt_peer_t *peer,int sock,int hash_id)
+void send_next_data(int sock,bt_peer_t *peer,int hash_id)
 {
 	int seqnum;
 	data_packet_t *data_p;
@@ -222,9 +222,9 @@ void send_next_data(bt_peer_t *peer,int sock,int hash_id)
 	int offset = hash_id*CHUNKLEN + peer->bytes_sent;
 
 	
-	printf("hash offset: %d, data offset from hash %d\n", hash_id*CHUNKLEN,peer->bytes_sent);
+	printf("chunk: %d - data %d - total %d\n", hash_id*CHUNKLEN,peer->bytes_sent,offset);
 
-	fseek(master_fd,offset,SEEK_SET);
+	//fseek(master_fd,offset,SEEK_SET);
 
 	if(left < BUFLEN)
 	{ 
@@ -239,32 +239,29 @@ void send_next_data(bt_peer_t *peer,int sock,int hash_id)
 		seqnum = peer->lastack->header.ack_num+1;
 	}
 
-
-	fgets(data,bytes_read,master_fd);
+	fread(data,1,bytes_read,master_fd);
+	//fgets(data,bytes_read,master_fd);
 
 	data_p = create_data(data,seqnum,bytes_read);
 
 	
  	spiffy_sendto(sock,(void *)data_p,data_p->header.packet_len,0,(struct sockaddr *)&(peer->addr),sizeof(peer->addr));
 	peer->bytes_sent+=bytes_read;	
-	printf("sending seq %d,total %d --(%d)\n",seqnum,peer->bytes_sent,bytes_read);
+	//printf("sending seq %d,total %d --(%d)\n",seqnum,peer->bytes_sent,bytes_read);
 	
 	free(data_p);
 	
 }
 
-void get_handler(bt_peer_t *peer, bt_peer_t *me, get_packet_t *get)
+void get_handler(int sock,bt_peer_t *peer, bt_peer_t *me, get_packet_t *get)
 {
 
-	int sock = socket(AF_INET, SOCK_DGRAM, 0);
 	if(me->his_request != NULL)
 	{
 		printf("DENIALLLL!!!\n");
 		denied_packet_t * denied = create_denied();
 		spiffy_sendto(sock,(void *)denied,denied->header.packet_len,0,(struct sockaddr *)(&peer->addr),sizeof(peer->addr));
 		free(denied);
-		
-		//close(sock);
 		return;		
 	}
 	*(get->hash+HASHLEN)='\0';
@@ -276,12 +273,12 @@ void get_handler(bt_peer_t *peer, bt_peer_t *me, get_packet_t *get)
 
 	master_fd = fopen(MASTER_DATA_FILE,"r");
 	assert(master_fd != NULL);
-	send_next_data(peer,sock,peer->hash_id);
-	//close(sock);
+	send_next_data(sock,peer,peer->hash_id);
+
 
 }
 
-void data_handler(bt_peer_t *peer,int sock, data_packet_t *data_p, FILE *out)
+void data_handler(int sock,bt_peer_t *peer, data_packet_t *data_p, FILE *out)
 {
 	int size = data_p->header.packet_len-data_p->header.header_len;
 	ack_packet_t* ack;
@@ -289,8 +286,11 @@ void data_handler(bt_peer_t *peer,int sock, data_packet_t *data_p, FILE *out)
 	fwrite(data_p->data,1,size,out);
 	peer->bytes_received+=size;
 	ack = create_ack(data_p->header.seq_num);
-	printf("received seq %d, total %d --(%d)\n",data_p->header.seq_num,peer->bytes_received,size);
-    spiffy_sendto(sock,(void *)ack,ack->header.packet_len,0,(struct sockaddr *)&(peer->addr),sizeof(peer->addr));
+	//if(data_p->header.seq_num % 50 == 0)
+	//{
+		printf("received seq %d, total %d --(%d)\n",data_p->header.seq_num,peer->bytes_received,size);
+	//}    
+	spiffy_sendto(sock,(void *)ack,ack->header.packet_len,0,(struct sockaddr *)&(peer->addr),sizeof(peer->addr));
 		
 	if(peer->bytes_received == CHUNKLEN)
 	{
@@ -298,7 +298,7 @@ void data_handler(bt_peer_t *peer,int sock, data_packet_t *data_p, FILE *out)
 		peer->chunks_fetched++;
 		if(peer->chunks_fetched < peer->hehas->chunks.num_chunks)
 		{
-			get_next_chunk(peer,sock);
+			get_next_chunk(sock,peer);
 		}
 		else
 		{
@@ -312,7 +312,7 @@ void data_handler(bt_peer_t *peer,int sock, data_packet_t *data_p, FILE *out)
 	}else if(peer->bytes_received > CHUNKLEN)
 	{
 		printf("DAnger will robinson!!!\n");
-		//exit(1);
+		exit(1);
 	}
 	free(ack);
 
@@ -320,31 +320,23 @@ void data_handler(bt_peer_t *peer,int sock, data_packet_t *data_p, FILE *out)
 }
 
 
-void ack_handler(bt_peer_t *peer,bt_peer_t *me, ack_packet_t *ack)
+void ack_handler(int sock,bt_peer_t *peer,bt_peer_t *me, ack_packet_t *ack)
 {
-	
-  	int sock;
-	sock = socket(AF_INET, SOCK_DGRAM, 0);
 	int should_be = 1;
 	if(peer->lastack == NULL)
 	{
 		should_be =1;
 	}else
 	{
-
-		if(peer->lastack->header.ack_num == 150)
-		{
-			printf("herere\n");
-		}	
 		should_be = peer->lastack->header.ack_num+1;
 	}
 	if(ack->header.ack_num == should_be)
 	{
-		printf("got ack %d\n",ack->header.ack_num);
+		//printf("got ack %d\n",ack->header.ack_num);
 		if(peer->bytes_sent < CHUNKLEN)
 		{
 			peer->lastack = ack;
-			send_next_data(peer,sock,peer->hash_id);
+			send_next_data(sock,peer,peer->hash_id);
 		}
 		else if (peer->bytes_sent == CHUNKLEN)
 		{
@@ -364,42 +356,41 @@ void ack_handler(bt_peer_t *peer,bt_peer_t *me, ack_packet_t *ack)
 		}
 	
 	}
-	close(sock);
 }
 
 
-void denied_handler(bt_peer_t *peer, denied_packet_t * denied)
+void denied_handler(int sock,bt_peer_t *peer, denied_packet_t * denied)
 {
 	printf("GOT DENIED!!!\n");
 
 }
 
-void packet_handler( void *peer,void *me,void *packet, chunks_t *local_chunks)
+void packet_handler( int sock, void *peer,void *me,void *packet, chunks_t *local_chunks)
 {
-  	int sock = socket(AF_INET, SOCK_DGRAM, 0);
+
 	header_t header;
 	get_header(&header,packet); 
     if (header.packet_type == TYPE_WHOHAS)
     {
-		whohas_handler((bt_peer_t *)peer,sock,(whohas_packet_t *)packet,local_chunks);
+		whohas_handler(sock,(bt_peer_t *)peer,(whohas_packet_t *)packet,local_chunks);
 	}else if(header.packet_type == TYPE_IHAVE)
 	{
-		ihave_handler((bt_peer_t *)peer,sock,(ihave_packet_t *)packet);
+		ihave_handler(sock,(bt_peer_t *)peer,(ihave_packet_t *)packet);
 	}else if(header.packet_type == TYPE_GET)
 	{		
-		get_handler((bt_peer_t *)peer,(bt_peer_t *)me,(get_packet_t *)packet);
+		get_handler(sock,(bt_peer_t *)peer,(bt_peer_t *)me,(get_packet_t *)packet);
 	}else if (header.packet_type == TYPE_DATA)
     {
-		data_handler((bt_peer_t *)peer,sock,(data_packet_t *)packet,out);
+		data_handler(sock,(bt_peer_t *)peer,(data_packet_t *)packet,out);
 	}else if (header.packet_type == TYPE_ACK)
 	{
-		ack_handler((bt_peer_t *)peer,(bt_peer_t *)me,(ack_packet_t *)packet);
+		ack_handler(sock,(bt_peer_t *)peer,(bt_peer_t *)me,(ack_packet_t *)packet);
 	}else 
 	{
-		denied_handler((bt_peer_t *)peer,(denied_packet_t *)packet);
+		denied_handler(sock,(bt_peer_t *)peer,(denied_packet_t *)packet);
 	}
 
-	//close(sock);
+
 	
 }
 
@@ -407,8 +398,7 @@ void packet_handler( void *peer,void *me,void *packet, chunks_t *local_chunks)
 
 void send_whohas(void *peers, int id, int num_chunks, char *hashes)
 {
-    int fd = socket(AF_INET, SOCK_DGRAM, 0);
-    assert(fd != 0);
+  	int sock = socket(AF_INET, SOCK_DGRAM, 0);
 	whohas_packet_t *whohas = NULL;
 	int iterations = ceil((float)num_chunks/(float)CHUNKS_PER_PACKET);
 	int send_count,i;
@@ -435,10 +425,11 @@ void send_whohas(void *peers, int id, int num_chunks, char *hashes)
 		while(peer->next!=NULL)
 		{
 			
-			spiffy_sendto(fd,(void *)whohas,whohas->header.packet_len,0,(struct sockaddr *)&(peer->addr),sizeof(peer->addr));
+			spiffy_sendto(sock,(void *)whohas,whohas->header.packet_len,0,(struct sockaddr *)&(peer->addr),sizeof(peer->addr));
 			peer = peer->next;		
 		}
-		//close(fd);
+		close(sock);
+
 		free(whohas);	
 	}
 	

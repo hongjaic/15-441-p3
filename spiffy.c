@@ -31,7 +31,7 @@ ssize_t spiffy_sendto(int s, const void *msg, size_t len, int flags, const struc
 	if (to->sa_family == AF_INET) {
         	s_head.lDestAddr = ((struct sockaddr_in*)to)->sin_addr.s_addr;
         	s_head.lDestPort = ((struct sockaddr_in*)to)->sin_port;
-		 printf ("Sending to %s:%hd\n", inet_ntoa(((struct sockaddr_in*)to)->sin_addr), ntohs(((struct sockaddr_in*)to)->sin_port));
+		 //printf ("Sending to %s:%hd\n", inet_ntoa(((struct sockaddr_in*)to)->sin_addr), ntohs(((struct sockaddr_in*)to)->sin_port));
 	} else {
 		fprintf(stderr, "spiffy_sendto:  must specify AF_INET.  FIX YOUR CODE.\n");
 		errno = ENOTSUP;

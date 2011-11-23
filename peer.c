@@ -92,7 +92,7 @@ void process_cmd(char *chunkfile, char *outputfile) {
 
 	FILE *chunk_fd = fopen(chunkfile,"r");
 	assert(chunk_fd!=NULL);	
-	FILE *out_fd = fopen(outputfile,"a");	
+	FILE *out_fd = fopen(outputfile,"w+");	
 	assert(out_fd!=NULL);	
 	int chunk_num = 0;
 	char *hash, *hashes;
@@ -117,7 +117,7 @@ void process_cmd(char *chunkfile, char *outputfile) {
 
 	set_outfile(out_fd);	
 	send_whohas((void *)config.peers,config.identity,chunk_num,hashes);
-
+	
 
 }
 
@@ -137,7 +137,7 @@ void handle_user_input(char *line, void *cbdata)
   	}
 }
 
-void process_inbound_udp(bt_peer_t *me,int sock) 
+void process_inbound_udp(int in_sock,int out_sock,bt_peer_t *me) 
 {
 	struct sockaddr_in from;
 	socklen_t fromlen;
@@ -147,10 +147,10 @@ void process_inbound_udp(bt_peer_t *me,int sock)
 	bt_peer_t *peer;
 	
 	fromlen = sizeof(from);
-	len = spiffy_recvfrom(sock, buf, BUFLEN, 0, (struct sockaddr *) &from, &fromlen);	
+	len = spiffy_recvfrom(in_sock, buf, BUFLEN, 0, (struct sockaddr *) &from, &fromlen);	
 	packet = bytes_to_packet(buf,len);
 	peer = bt_peer_info2(&config, &from);
-	packet_handler((void *)peer,(void *)me,packet,&local_chunks);
+	packet_handler(out_sock,(void *)peer,(void *)me,packet,&local_chunks);
   
 }
 
@@ -158,7 +158,7 @@ void process_inbound_udp(bt_peer_t *me,int sock)
 
 void peer_run(bt_config_t *config) 
 {
-  int sock;
+    int sock, out_sock; 
 	struct sockaddr_in myaddr;
 	fd_set readfds;
 	struct user_iobuf *userbuf;
@@ -170,7 +170,7 @@ void peer_run(bt_config_t *config)
     	exit(-1);
   	}
   
-  	if ((sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_IP)) == -1) 
+  	if ((sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_IP)) == -1 || (out_sock = socket(AF_INET, SOCK_DGRAM, 0)) == -1) 
 	{
 	    perror("peer_run could not create socket");
 	    exit(-1);
@@ -181,6 +181,7 @@ void peer_run(bt_config_t *config)
 	myaddr.sin_addr.s_addr = htonl(INADDR_ANY);
 	myaddr.sin_port = htons(config->myport);
     printf("bound to %s port %d\n",inet_ntoa(myaddr.sin_addr),ntohs(myaddr.sin_port));
+  	
 	if (bind(sock, (struct sockaddr *) &myaddr, sizeof(myaddr)) == -1) 
 	{
 	    perror("peer_run could not bind socket");
@@ -203,7 +204,7 @@ void peer_run(bt_config_t *config)
 
     		if (FD_ISSET(sock, &readfds)) 
 			{
-				process_inbound_udp(me, sock);
+				process_inbound_udp(sock,out_sock,me);
     		}
     	  
 			if (FD_ISSET(STDIN_FILENO, &readfds)) 
@@ -212,6 +213,7 @@ void peer_run(bt_config_t *config)
 			}
 	    }
 	}
+	//close(sock);
 }
 	
 	

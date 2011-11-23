@@ -70,7 +70,7 @@ typedef struct denied
 }denied_packet_t;
 
 
-void packet_handler( void *peer,void *me,void *packet, chunks_t *local_chunks);
+void packet_handler( int sock,void *peer,void *me,void *packet, chunks_t *local_chunks);
 void *bytes_to_packet(char *buf, int size);
 void send_whohas(void *peers,int id, int num_chunks, char *all_chunks);
 void set_hasfile(char *has);
