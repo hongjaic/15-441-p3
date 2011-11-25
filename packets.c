@@ -7,6 +7,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <pthread.h>
+#include <unistd.h>
 #include "packets.h"
 #include "bt_parse.h"
 #include "spiffy.h"
@@ -480,12 +481,24 @@ void send_whohas(void *peers, int id, int num_chunks, char *hashes)
 		hashes+=CHUNKS_PER_PACKET;		
 	
 		
-		while(peer->next!=NULL)
-		{
+		//while(peer->next!=NULL)
+		//{
 			
+		//	spiffy_sendto(sock,(void *)whohas,whohas->header.packet_len,0,(struct sockaddr *)&(peer->addr),sizeof(peer->addr));
+		//	peer = peer->next;		
+		//}
+        //
+        while(peer != NULL)
+        {
+            if (peer->id == id)
+            {   
+                peer = peer->next;
+                continue;
+            }
+
 			spiffy_sendto(sock,(void *)whohas,whohas->header.packet_len,0,(struct sockaddr *)&(peer->addr),sizeof(peer->addr));
-			peer = peer->next;		
-		}
+            peer = peer->next;
+        }
 		close(sock);
 
 		free(whohas);	

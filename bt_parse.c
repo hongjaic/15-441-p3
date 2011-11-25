@@ -103,7 +103,7 @@ void bt_parse_command_line(bt_config_t *config) {
 	exit(-1);
       }
       break;
-    case 'p': 
+    case 'p':
       strcpy(config->peer_list_file, optarg);
       break;
     case 'c':
