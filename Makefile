@@ -3,7 +3,7 @@ CC 		= gcc
 CFLAGS		= -g -Wall -DDEBUG
 LDFLAGS		= -lm -lpthread
 TESTDEFS	= -DTESTING			# comment this out to disable debugging code
-OBJS		= peer.o bt_parse.o spiffy.o debug.o input_buffer.o chunk.o sha.o packets.o
+OBJS		= peer.o bt_parse.o spiffy.o debug.o input_buffer.o chunk.o sha.o packet_handler.o sliding_buffer.o
 MK_CHUNK_OBJS   = make_chunks.o chunk.o sha.o
 
 BINS            = peer make-chunks
