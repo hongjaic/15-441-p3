@@ -32,6 +32,8 @@ void send_next_data(int sock, bt_peer_t *peer, int hash_id, int seqnum);
 void post_send_cleanup(bt_peer_t *peer);
 void post_receive_cleanup(bt_peer_t *peer);
 
+void destroy_fof(bt_peer_t *peer);
+
 
 void *bytes_to_packet(char *buf, int size)
 {
@@ -385,6 +387,8 @@ void data_handler(int sock, bt_peer_t *peer, data_packet_t *data_p)
     printf("acknum: %d\n", acknum);
     printf("hashid: %d\n", peer->get_hash_id);
 
+
+
     if (acknum == FINALACK)
     {
         post_receive_cleanup(peer);
@@ -399,6 +403,8 @@ void data_handler(int sock, bt_peer_t *peer, data_packet_t *data_p)
             peer->chunks_fetched = 0;
             free(peer->hehas);
             peer->hehas = NULL;
+            destroy_fof(me);
+            printf("FUCK\n");
         }
     }
 
@@ -795,7 +801,29 @@ void post_receive_cleanup(bt_peer_t *peer)
         peer->hehas = peer->hehas->next;
         free(tmphehas);
     }
-    //peer->chunks_fetched++;
+    peer->chunks_fetched++;
     peer->get_hash_id = PSUEDO_INF;
     destroy_entries(&recv_buffer);
+}
+
+void destroy_fof(bt_peer_t *peer)
+{
+    fetching_or_fetched_t *prev;
+    fetching_or_fetched_t *curr;
+
+    if (peer == NULL)
+    {
+        return;
+    }
+
+    curr = peer->fetching_or_fetched;
+
+    while(curr != NULL)
+    {
+        prev = curr;
+        curr = curr->next;
+        free(prev);
+    }
+
+    peer->fetching_or_fetched = NULL;
 }
