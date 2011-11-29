@@ -21,6 +21,7 @@
 #include "packet_handler.h"
 #include "constants.h"
 #include "sliding_buffer.h"
+#include "congestion_avoidance.h"
 
 #define TO_HEX(line) 0x|line
 bt_config_t config;
@@ -32,6 +33,7 @@ char request_chunks_file[BT_FILENAME_LEN];
 uint32_t cwnd = 8;
 sliding_buffer_t recv_buffer;
 sliding_buffer_t send_buffer;
+congestion_state_t state;
 
 bt_peer_t *me;	
 
@@ -58,6 +60,8 @@ int main(int argc, char **argv)
     send_buffer.num_entry = 0;
     send_buffer.head = NULL;
     recv_buffer.tail = NULL;
+
+    init_congestion_state(&state);
 
   	DPRINTF(DEBUG_INIT, "peer.c main beginning\n");
 

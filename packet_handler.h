@@ -9,6 +9,7 @@
 #include "constants.h"
 #include "packets.h"
 #include "sliding_buffer.h"
+#include "congestion_avoidance.h"
 
 extern bt_config_t config;
 extern local_chunks_t local_chunks;
@@ -18,6 +19,7 @@ extern char request_chunks_file[BT_FILENAME_LEN];
 extern sliding_buffer_t recv_buffer;
 extern sliding_buffer_t send_buffer;
 extern uint32_t cwnd;
+extern congestion_state_t state;
 
 extern bt_peer_t *me;
 

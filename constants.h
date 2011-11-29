@@ -32,6 +32,8 @@
 #define TYPE_DENIED         5
 
 #define MAXWIN              64
+#define IN_SS               1
+#define IN_CA               0
 
 /* should probably double this because we're using worng hash size */
 #define MAX_CHUNKS_PER_PACK 37

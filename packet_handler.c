@@ -309,6 +309,7 @@ void get_handler(int sock, bt_peer_t *peer, get_packet_t *get)
 
 
     /* do something about seqnum */
+    init_congestion_state(&state);
 	send_next_data(sock, peer, peer->send_hash_id, 1);
 
     printf("get_handler fin\n");
@@ -459,10 +460,13 @@ void ack_handler(int sock, bt_peer_t *peer, ack_packet_t *ack)
     if (peer->num_dupacks == 3)
     {
         //send_next_data(sock, peer, peer->send_hash_id, peer->last_ack + 1);
+        
+        mult_decrease(&state);
 		spiffy_sendto(sock, send_buffer.head->data_packet, send_buffer.head->data_packet->header.packet_len,0,(struct sockaddr *)&(peer->addr),sizeof(peer->addr));
     }
     else
     {
+        slow_start(&state);
         send_next_data(sock, peer, peer->send_hash_id, me->last_seq + 1);//peer->last_seq + 1);// + peer->num_dupacks);
     }
 
@@ -612,7 +616,7 @@ This sends the next piece of chunk data from chunk with id = "hash_id" to the pe
 */
 void send_next_data(int sock, bt_peer_t *peer, int hash_id, int seqnum)
 {
-    printf("send_next_data init\n");
+    printf("==============send_next_data init===================\n");
 
 	//int seqnum;
     int errnoSave;
@@ -625,8 +629,9 @@ void send_next_data(int sock, bt_peer_t *peer, int hash_id, int seqnum)
 	int bytes_read;// = BUFLEN;
     int offset;
 
-    if (seqnum >= peer->last_ack + cwnd)
+    if (seqnum > peer->last_ack + state.cwnd)// || send_buffer.num_entry == state.cwnd)// cwnd)
     {
+        printf("1\n");
         return;
     }
 
@@ -653,12 +658,13 @@ void send_next_data(int sock, bt_peer_t *peer, int hash_id, int seqnum)
 
     bytes_to_read = 0;
     bytes_read = 0;
-    while (offset < hash_id*CHUNKLEN + CHUNKLEN)// && tmpseqnum <= peer->last_ack + cwnd)
+    while (offset < hash_id*CHUNKLEN + CHUNKLEN && tmpseqnum <= peer->last_ack + state.cwnd)
     {
         printf("seqnum: %d\n", tmpseqnum);
 
-        if (send_buffer.num_entry == cwnd)
+        if (send_buffer.num_entry == state.cwnd)// cwnd)
         {
+            printf("2\n");
             break;
         }
         
@@ -696,6 +702,7 @@ void send_next_data(int sock, bt_peer_t *peer, int hash_id, int seqnum)
 
         spiffy_sendto(sock, (void *)data_p, data_p->header.packet_len, 0, (struct sockaddr *)&(peer->addr), sizeof(peer->addr));
         
+        state.curr_round++;
         //free(data_p);
 
         offset += bytes_read;
@@ -703,7 +710,8 @@ void send_next_data(int sock, bt_peer_t *peer, int hash_id, int seqnum)
 
     fclose(fp);
 
-    printf("send_next_data fin\n");
+    add_increase(&state);
+    printf("==================send_next_data fin================\n");
 }
 
 

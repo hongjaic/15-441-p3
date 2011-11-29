@@ -216,7 +216,7 @@ void destroy_upto_ack(sliding_buffer_t *sb, int ack)
     
     while (curr != NULL)
     {
-        if (ack > curr->data_packet->header.seq_num)
+        if (ack >= curr->data_packet->header.seq_num)
         {
             return;
         }
