@@ -16,8 +16,8 @@
 
 
 int get_hash_id(char *hash);
-int get_hash_id_master(char *hash);
-int get_hash_id_test(char *hash);
+int get_hash_id_master(uint32_t *hash);
+int get_hash_id_test(uint32_t *hash);
 
 void whohas_handler(int sock, bt_peer_t *peer, whohas_packet_t *whohas);
 void ihave_handler(int sock, bt_peer_t *peer, ihave_packet_t *ihave);
@@ -46,14 +46,7 @@ void *bytes_to_packet(char *buf, int size)
 //returns the header of the packet
 void get_header(header_t *header, void *packet)
 {
-	//int header_len;
 	memcpy(header, packet, HEADERLEN);
-	//header_len = header->header_len;
-	
-    //if(header_len > HEADERLEN)
-	//{
-	//	memcpy(header,packet,header_len);
-	//}
 }
 
 
@@ -72,37 +65,51 @@ void set_header(header_t *header,int type, int seq_num, int ack_num, int header_
 
 whohas_packet_t * create_whohas(int chunks_num, char *chunk_hashes)
 { 
-	whohas_packet_t *whohas = (whohas_packet_t *)malloc(HEADERLEN + 4 + chunks_num*HASHLEN);
+    int i;
+    char *ptr;
+    uint32_t chunk_hashes_int[chunks_num*HASHLEN_PACKET];
+
+	whohas_packet_t *whohas = (whohas_packet_t *)malloc(HEADERLEN + 4 + chunks_num*HASHLEN_PACKET);
 	assert(whohas != NULL);
 
-	set_header(&(whohas->header), TYPE_WHOHAS, PAD, PAD, HEADERLEN, HEADERLEN + 4 + chunks_num*HASHLEN);
+    for (i = 0; i < chunks_num; i++)
+    {
+        ptr = chunk_hashes + (i*HASHLEN);
+        chunk_hashes_int[i*5] = hash_to_int(ptr, 0, 8);
+        chunk_hashes_int[i*5 + 1] = hash_to_int(ptr, 8, 8);
+        chunk_hashes_int[i*5 + 2] = hash_to_int(ptr, 16, 8);
+        chunk_hashes_int[i*5 + 3] = hash_to_int(ptr, 24, 8);
+        chunk_hashes_int[i*5 + 4] = hash_to_int(ptr, 32, 8);
+    }
+
+	set_header(&(whohas->header), TYPE_WHOHAS, PAD, PAD, HEADERLEN, HEADERLEN + 4 + chunks_num*HASHLEN_PACKET);
 	whohas->num_chunks = chunks_num;
-	memcpy(whohas->chunks.hashes, chunk_hashes, HASHLEN*chunks_num);
+	memcpy((whohas->chunks), chunk_hashes_int, HASHLEN_PACKET*chunks_num);
 	
     return whohas;
 }
 
 
-ihave_packet_t * create_ihave(chunks_t *chunk_hits, int chunks_num)
+ihave_packet_t * create_ihave(uint32_t *chunk_hits, int chunks_num)
 {
-	ihave_packet_t *ihave = (ihave_packet_t *)malloc(HEADERLEN + 4 + chunks_num*HASHLEN);
+	ihave_packet_t *ihave = (ihave_packet_t *)malloc(HEADERLEN + 4 + chunks_num*HASHLEN_PACKET);
 	assert(ihave != NULL);
     
-    set_header(&(ihave->header), TYPE_IHAVE, PAD, PAD, HEADERLEN, HEADERLEN + 4 + chunks_num*HASHLEN);
+    set_header(&(ihave->header), TYPE_IHAVE, PAD, PAD, HEADERLEN, HEADERLEN + 4 + chunks_num*HASHLEN_PACKET);
 	ihave->num_chunks = chunks_num;
-    memcpy(&(ihave->chunks), chunk_hits, HASHLEN*chunks_num);
+    memcpy(&(ihave->chunks), chunk_hits, HASHLEN_PACKET*chunks_num);
 
 	return ihave;
 }
 
 
-get_packet_t * create_get(char *hash)
+get_packet_t * create_get(uint32_t *hash)
 {
-	get_packet_t *get = (get_packet_t *)malloc(HEADERLEN + strlen(hash));
+	get_packet_t *get = (get_packet_t *)malloc(HEADERLEN + HASHLEN_PACKET);
 	assert(get != NULL);
     
-    set_header(&(get->header), TYPE_GET, PAD, PAD, HEADERLEN, HEADERLEN + strlen(hash));
-	memcpy(&(get->hash), hash, strlen(hash));
+    set_header(&(get->header), TYPE_GET, PAD, PAD, HEADERLEN, HEADERLEN + HASHLEN_PACKET);
+	memcpy(&(get->hash), hash, HASHLEN_PACKET);
 	
     return get;
 }
@@ -191,39 +198,51 @@ void whohas_handler(int sock, bt_peer_t *peer, whohas_packet_t *whohas)
 {
     printf("whohas handler init\n");
 
-	int i;
-	char hash[HASHLEN+1];
+	int i, j;
 	ihave_packet_t *ihave;
-	chunks_t chunk_hits;
+    uint32_t chunk_hits[HASHLEN_PACKET*(whohas->num_chunks)];
     int num_chunk_hits;
     hehas_t *next_local_chunk;
+    uint32_t *next_local_chunk_hash;
+    uint32_t *hashes = whohas->chunks;
 
 	num_chunk_hits = 0;
 	
     next_local_chunk = local_chunks.hehas;
 
-	for(i = 0; i < whohas->num_chunks; i++)
+	for (i = 0; i < whohas->num_chunks; i++)
 	{
-		memcpy(hash, whohas->chunks.hashes + i*HASHLEN, HASHLEN);
-		hash[HASHLEN]='\0';
-
         next_local_chunk = local_chunks.hehas;
+        next_local_chunk_hash = next_local_chunk->chunkhash;
+        
         while(next_local_chunk != NULL)
         {
-            if(strcmp(hash, next_local_chunk->chunkhash) == 0)
+            for (j = 0; j < 5; j++)
             {
-                memcpy(chunk_hits.hashes + num_chunk_hits*HASHLEN, hash, HASHLEN);
-                num_chunk_hits++;
-                break;
+                if (hashes[i*5 + j] != next_local_chunk_hash[j])
+                {
+                    break;
+                }
+
+                if (j == 4)
+                {
+                    chunk_hits[num_chunk_hits*5] = hashes[i*5];
+                    chunk_hits[num_chunk_hits*5 + 1] = hashes[i*5 + 1];
+                    chunk_hits[num_chunk_hits*5 + 2] = hashes[i*5 + 2];
+                    chunk_hits[num_chunk_hits*5 + 3] = hashes[i*5 + 3];
+                    chunk_hits[num_chunk_hits*5 + 4] = hashes[i*5 + 4];
+                    num_chunk_hits++;
+                }
             }
 
             next_local_chunk = next_local_chunk->next;
+            next_local_chunk_hash = next_local_chunk->chunkhash;            
         }
 	}			
 
 	if(num_chunk_hits != 0)
-	{
-	    ihave = create_ihave(&chunk_hits, num_chunk_hits);	
+    {
+	    ihave = create_ihave(chunk_hits, num_chunk_hits);	
 		//printf("sending %d chunks\n",ihave->chunks.num_chunks);
 		spiffy_sendto(sock, (void *)ihave, ihave->header.packet_len, 0, (struct sockaddr *)(&peer->addr), sizeof(peer->addr));
 		free(ihave);
@@ -247,7 +266,7 @@ void ihave_handler(int sock, bt_peer_t *peer, ihave_packet_t *ihave)
     printf("ihave_handler init\n");
 
     hehas_t *next_chunk, *append_to = peer->hehas;
-    int i, num_chunks = ihave->num_chunks;
+    int i, j, num_chunks = ihave->num_chunks;
 	//printf("node %d has %d chunks:\n",peer->id, ihave->chunks.num_chunks);
 	//peer->hehas = hehas;
 	//peer->bytes_received = 0;
@@ -256,9 +275,12 @@ void ihave_handler(int sock, bt_peer_t *peer, ihave_packet_t *ihave)
     for (i = 0; i < num_chunks; i++)
     {
         next_chunk = (hehas_t *)malloc(sizeof(hehas_t));
-        memcpy(next_chunk->chunkhash, ihave->chunks.hashes + i*HASHLEN, HASHLEN);
-        (next_chunk->chunkhash)[HASHLEN] = '\0';
-        //next_chunk->chunk_id = get_hash_id_master(next_chunk->chunkhash);
+        
+        for (j = 0; j < 5; j++)
+        {
+            (next_chunk->chunkhash)[j] = ihave->chunks[i*5 + j];
+        }
+        
         next_chunk->chunk_id = get_hash_id_test(next_chunk->chunkhash);
         next_chunk->next = NULL;
 
@@ -273,6 +295,7 @@ void ihave_handler(int sock, bt_peer_t *peer, ihave_packet_t *ihave)
             append_to = append_to->next;
         }
     }
+
     peer->num_chunks = num_chunks;
     peer->get_hash_id = peer->hehas->chunk_id;
 
@@ -297,10 +320,8 @@ void get_handler(int sock, bt_peer_t *peer, get_packet_t *get)
 		//denied_packet_t * denied = create_denied();
 		//spiffy_sendto(sock,(void *)denied,denied->header.packet_len,0,(struct sockaddr *)(&peer->addr),sizeof(peer->addr));
 		//free(denied);
-		return;		
+		return;	
 	}
-
-	//*(get->hash+HASHLEN)='\0';
 	
     me->his_request = get;
 	peer->his_request = get;
@@ -343,11 +364,6 @@ void data_handler(int sock, bt_peer_t *peer, data_packet_t *data_p)
     insert_entry(&recv_buffer, time(NULL), data_p);
 
     acknum = find_ack(&recv_buffer);
-
-    //offset = (seqnum - 1)*BUFLEN;
-	//size = data_p->header.packet_len - data_p->header.header_len;
-	
-    //peer->bytes_received += size;
 
     ack = create_ack(acknum);
 
@@ -445,13 +461,7 @@ void ack_handler(int sock, bt_peer_t *peer, ack_packet_t *ack)
     if (peer->last_ack == FINALACK)
     {
         printf("ack_handler fin due to FINALACK\n");
-
         post_send_cleanup(peer);
-
-        //me->his_request = NULL;
-		//peer->his_request = NULL;
-		//peer->last_ack = 0;
-
         return;
     }
 
@@ -489,16 +499,15 @@ void send_whohas(void *peers, int id, int num_chunks, char *hashes)
     printf("send whohas init\n");
 
     char *temp_hashes = hashes;
-  	int sock = socket(AF_INET, SOCK_DGRAM, 0);
-	whohas_packet_t *whohas = NULL;
-	int iterations = ceil((float)num_chunks/(float)MAX_CHUNKS_PER_PACK);
-	int send_count,i;
-	bt_peer_t *peer = (bt_peer_t *)peers;
+    int iterations = ceil((float)num_chunks/(float)MAX_CHUNKS_PER_PACK);
+    int send_count, i;
+    whohas_packet_t *whohas = NULL;
+    int sock = socket(AF_INET, SOCK_DGRAM, 0);
+    bt_peer_t *peer = (bt_peer_t *)peers;
 
-    /* change this logic, this will not work */
-	for (i = 0; i < iterations; i++)
-	{
-		if(iterations == 1)
+    for (i = 0; i < iterations; i++)
+    {
+        if(iterations == 1)
 		{
 			send_count = num_chunks;
 		}
@@ -511,26 +520,25 @@ void send_whohas(void *peers, int id, int num_chunks, char *hashes)
 			send_count = MAX_CHUNKS_PER_PACK;
         }
 
-		whohas = create_whohas(send_count, temp_hashes);
+        temp_hashes = hashes + i*MAX_CHUNKS_PER_PACK*HASHLEN;
+        whohas = create_whohas(send_count, temp_hashes);
 
-		temp_hashes += send_count*HASHLEN;		
-	
-        while(peer != NULL)
+        while (peer!= NULL)
         {
-            if (peer->id == id)
-            {   
+            if(peer->id == id)
+            {
                 peer = peer->next;
                 continue;
             }
-
-			spiffy_sendto(sock,(void *)whohas,whohas->header.packet_len,0,(struct sockaddr *)&(peer->addr),sizeof(peer->addr));
+            
+            spiffy_sendto(sock,(void *)whohas,whohas->header.packet_len,0,(struct sockaddr *)&(peer->addr),sizeof(peer->addr));
             peer = peer->next;
         }
-		close(sock);
 
-		free(whohas);	
-	}
-    
+        free (whohas);
+    }
+
+    close(sock);
     free(hashes);
 
     printf("send whohas fin\n");
@@ -718,41 +726,50 @@ void send_next_data(int sock, bt_peer_t *peer, int hash_id, int seqnum)
 /*
 given a hash value, this returns the hash ID as it pertains to the master chunks data file
 */
-int get_hash_id(char *hash)
-{
-    char tmphash[HASHLEN + 1];
-    hehas_t *next_chunk = local_chunks.hehas;
+//int get_hash_id(char *hash)
+//{
+//    char tmphash[HASHLEN + 1];
+//    hehas_t *next_chunk = local_chunks.hehas;
     
-    memcpy(tmphash, hash, HASHLEN);
-    tmphash[HASHLEN] = '\0';
+//    memcpy(tmphash, hash, HASHLEN);
+//    tmphash[HASHLEN] = '\0';
     
-    while (next_chunk != NULL)
-    {       
-        if (strcmp(tmphash, next_chunk->chunkhash) == 0)
-        {
-            return next_chunk->chunk_id;
-        }
+//    while (next_chunk != NULL)
+//    {       
+//        if (strcmp(tmphash, next_chunk->chunkhash) == 0)
+//        {
+//            return next_chunk->chunk_id;
+//        }
 
-        next_chunk = next_chunk->next;
-    }
+//        next_chunk = next_chunk->next;
+//    }
 
-	return -1;
-}
+//	return -1;
+//}
 
 
-int get_hash_id_master(char *hash)
+int get_hash_id_master(uint32_t *hash)
 {
-    char tmphash[HASHLEN + 1];
+    int i;
+    //char tmphash[HASHLEN + 1];
     hehas_t *next_chunk = master_chunks.hehas;
 
-    memcpy(tmphash, hash, HASHLEN);
-    tmphash[HASHLEN] = '\0';
+    //memcpy(tmphash, hash, HASHLEN);
+    //tmphash[HASHLEN] = '\0';
 
     while (next_chunk != NULL)
-    {            
-        if (strcmp(tmphash, next_chunk->chunkhash) == 0)
+    {
+        for (i = 0; i < 5; i++)
         {
-            return next_chunk->chunk_id;
+            if (hash[i] != (next_chunk->chunkhash)[i])
+            {
+                break;
+            }
+
+            if (i == 4)
+            {
+                return next_chunk->chunk_id;
+            }
         }
 
         next_chunk = next_chunk->next;
@@ -762,17 +779,18 @@ int get_hash_id_master(char *hash)
 }
 
 
-int get_hash_id_test(char *hash)
+int get_hash_id_test(uint32_t *hash)
 {
+    int i;
     int id;
     char *my_hash;
-    char tmphash[HASHLEN+1];
+    //char tmphash[HASHLEN+1];
     char buf[BUFLEN];
     
     FILE *fp = fopen(request_chunks_file, "r");
     
-    memcpy(tmphash, hash, HASHLEN);
-    tmphash[HASHLEN] = '\0';
+    //memcpy(tmphash, hash, HASHLEN);
+    //tmphash[HASHLEN] = '\0';
     
     while (fgets(buf, BUFLEN, fp) != NULL)
     {
@@ -780,12 +798,22 @@ int get_hash_id_test(char *hash)
         my_hash = strtok(NULL, " ");
         my_hash[HASHLEN] = '\0';
         
-        if (strcmp(tmphash, my_hash) == 0)
+        for (i = 0; i < 5; i++)
         {
-            return id;
+            if (int_str_comp(hash[i], my_hash, i*8, 8) != 0)
+            {
+                break;
+            }
+
+            if (i == 4)
+            {
+                return id;
+            }
         }
+
         buf[0] = '\0';
     }
+
     return -1;
 }
 

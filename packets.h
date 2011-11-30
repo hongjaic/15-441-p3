@@ -21,14 +21,9 @@
 typedef struct hehas_s
 {
     uint32_t chunk_id;
-    char chunkhash[HASHLEN+1];
     struct hehas_s *next;
+    uint32_t chunkhash[5];
 } hehas_t;
-
-typedef struct chunks
-{
-   char hashes[BUFLEN-4];
-} chunks_t;
 
 typedef struct local_chunks_s
 {
@@ -57,20 +52,20 @@ typedef struct whohas
 {
    header_t header;
    uint32_t num_chunks;
-   chunks_t chunks;
+   uint32_t chunks[];
 } whohas_packet_t;
 
 typedef struct ihave
 {
    header_t header;
    uint32_t num_chunks;
-   chunks_t chunks;
+   uint32_t chunks[];
 } ihave_packet_t;
 
 typedef struct get
 {
    header_t header;
-   char hash[HASHLEN];
+   uint32_t hash[5];
 } get_packet_t;
 
 typedef struct _data

@@ -90,7 +90,7 @@ all of the local chunk hashes to global variable "local_chunks"
 */
 void local_chunks_init(char *has_chunk_file)
 {
-	int i;
+	int i, j;
     int chunkid;
 	char buf[BUFLEN];
 	char *hash;
@@ -122,8 +122,12 @@ void local_chunks_init(char *has_chunk_file)
 
         newchunk = (hehas_t *)malloc(sizeof(hehas_t));
         newchunk->chunk_id = chunkid;
-        strcpy(newchunk->chunkhash, hash);
-        (newchunk->chunkhash)[HASHLEN] = '\0';
+        
+        for (j = 0; j < 5; j++)
+        {
+            (newchunk->chunkhash)[j] = hash_to_int(hash, j*8, 8);
+        }
+        
         newchunk->next = NULL;
 
         if (append_to == NULL)
@@ -144,7 +148,7 @@ void local_chunks_init(char *has_chunk_file)
 
 void master_chunks_init(char *master_chunk_file)
 {
-	int i;
+	int i, j;
     int chunkid;
 	char buf[BUFLEN];
     char *tmp_master_data_file;
@@ -196,8 +200,12 @@ void master_chunks_init(char *master_chunk_file)
 
         newchunk = (hehas_t *)malloc(sizeof(hehas_t));
         newchunk->chunk_id = chunkid;
-        strcpy(newchunk->chunkhash, hash);
-        (newchunk->chunkhash)[HASHLEN] = '\0';
+
+        for (j = 0; j < 5; j++)
+        {
+            (newchunk->chunkhash)[j] = hash_to_int(hash, j*8, 8);
+        }
+
         newchunk->next = NULL;
 
         if (append_to == NULL)
@@ -218,14 +226,14 @@ void master_chunks_init(char *master_chunk_file)
 
 void process_cmd(char *chunkfile, char *outputfile) 
 {
-	FILE *chunk_fd = fopen(chunkfile, "r");
-	assert(chunk_fd!=NULL);	
-	
     int chunk_num = 0;
 	char *hash, *hashes;
 	int offset = 0;
 	char buf[BUFLEN];
-
+	
+    FILE *chunk_fd = fopen(chunkfile, "r");
+	assert(chunk_fd!=NULL);	
+	
     strcpy(request_chunks_file, chunkfile);
     strcpy(config.output_file, outputfile);
 

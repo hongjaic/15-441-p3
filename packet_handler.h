@@ -10,6 +10,7 @@
 #include "packets.h"
 #include "sliding_buffer.h"
 #include "congestion_avoidance.h"
+#include "hexhashlib.h"
 
 extern bt_config_t config;
 extern local_chunks_t local_chunks;
