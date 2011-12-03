@@ -232,7 +232,13 @@ void process_cmd(char *chunkfile, char *outputfile)
 	char buf[BUFLEN];
 	
     FILE *chunk_fd = fopen(chunkfile, "r");
-	assert(chunk_fd!=NULL);	
+
+    if (chunk_fd == NULL)
+    {
+        fprintf(stderr, "The files you're looking for does not exist.\n");
+        return;
+    }
+	//assert(chunk_fd!=NULL);	
 	
     strcpy(request_chunks_file, chunkfile);
     strcpy(config.output_file, outputfile);
@@ -253,7 +259,8 @@ void process_cmd(char *chunkfile, char *outputfile)
 	}
 	fclose(chunk_fd);
 
-	send_whohas((void *)config.peers, config.identity, chunk_num, hashes);
+	//send_whohas((void *)config.peers, config.identity, chunk_num, hashes);
+    init_whohas(config.peers, chunk_num, hashes, config.identity);
 }
 
 void handle_user_input(char *line, void *cbdata) 

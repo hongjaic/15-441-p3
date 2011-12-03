@@ -172,6 +172,10 @@ void bt_parse_peer_list(bt_config_t *config) {
 	    node->addr.sin_family = AF_INET;
 	    node->addr.sin_port = htons(port);
 	    node->next = config->peers;
+
+        node->whohas_list.head = NULL;
+        node->whohas_list.tail = NULL;
+
 	    config->peers = node;
 	}
 }

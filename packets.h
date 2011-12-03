@@ -91,6 +91,18 @@ typedef struct fetching_or_fetched_s
     struct fetching_or_fetched_s *next;
 } fetching_or_fetched_t;
 
+typedef struct whohas_entry_s
+{
+    whohas_packet_t *whohas;
+    struct whohas_entry_s *next;
+} whohas_entry_t;
+
+typedef struct whohas_list_s
+{
+    whohas_entry_t *head;
+    whohas_entry_t *tail;
+} whohas_list_t;
+
 typedef struct bt_peer_s {
 	unsigned short  id;
 	//ihave_packet_t *hehas;
@@ -109,6 +121,8 @@ typedef struct bt_peer_s {
     fetching_or_fetched_t *fetching_or_fetched;
 
     struct bt_peer_s *curr_to;
+    
+    whohas_list_t whohas_list;
 } bt_peer_t;
 
 

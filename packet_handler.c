@@ -28,6 +28,7 @@ void denied_handler(int sock,bt_peer_t *peer, denied_packet_t * denied);
 
 void get_next_chunk(int sock, bt_peer_t *peer);
 void send_next_data(int sock, bt_peer_t *peer, int hash_id, int seqnum);
+void send_next_whohas(int sock, bt_peer_t *peer);
 
 void post_send_cleanup(bt_peer_t *peer);
 void post_receive_cleanup(bt_peer_t *peer);
@@ -438,6 +439,8 @@ void data_handler(int sock, bt_peer_t *peer, data_packet_t *data_p)
             peer->hehas = NULL;
             destroy_fof(me);
             printf("FUCK\n");
+
+            send_next_whohas(sock, peer);
         }
     }
 
@@ -520,18 +523,16 @@ void denied_handler(int sock,bt_peer_t *peer, denied_packet_t * denied)
 }
 
 
-/*
-Sends a whohas packet, to all the peers. 
-*/
-void send_whohas(void *peers, int id, int num_chunks, char *hashes)
+void init_whohas(bt_peer_t *peers, int num_chunks, char *hashes, int my_id)
 {
     printf("send whohas init\n");
 
+    int sock = socket(AF_INET, SOCK_DGRAM, 0);
     char *temp_hashes = hashes;
     int iterations = ceil((float)num_chunks/(float)MAX_CHUNKS_PER_PACK);
     int send_count, i;
     whohas_packet_t *whohas = NULL;
-    int sock = socket(AF_INET, SOCK_DGRAM, 0);
+    whohas_entry_t *whohas_wrapper = NULL;
     bt_peer_t *peer = (bt_peer_t *)peers;
 
     for (i = 0; i < iterations; i++)
@@ -554,23 +555,74 @@ void send_whohas(void *peers, int id, int num_chunks, char *hashes)
 
         while (peer!= NULL)
         {
-            if(peer->id == id)
+            whohas = create_whohas(send_count, temp_hashes);
+            whohas_wrapper = (whohas_entry_t *)malloc(sizeof(whohas_entry_t));
+            whohas_wrapper->whohas = whohas;
+            whohas_wrapper->next = NULL;
+
+            if (peer->id == my_id)
             {
                 peer = peer->next;
                 continue;
             }
-            
-            spiffy_sendto(sock,(void *)whohas,whohas->header.packet_len,0,(struct sockaddr *)&(peer->addr),sizeof(peer->addr));
+
+            if (peer->whohas_list.head == NULL)
+            {
+                peer->whohas_list.head = whohas_wrapper;
+                peer->whohas_list.tail = whohas_wrapper;
+            }
+            else
+            {
+                peer->whohas_list.tail->next = whohas_wrapper;
+                peer->whohas_list.tail = whohas_wrapper;
+            }
+
             peer = peer->next;
         }
-
-        free (whohas);
     }
 
-    close(sock);
-    free(hashes);
+    peer = (bt_peer_t *)peers;
+    
+    while (peer != NULL)
+    {
+        if (peer->id == my_id)
+        {
+            peer = peer->next;
+            continue;
+        }
 
+        send_next_whohas(sock, peer);
+        
+        peer = peer->next;
+    };
+    
     printf("send whohas fin\n");
+}
+
+void send_next_whohas(int sock, bt_peer_t *peer)
+{
+    whohas_entry_t *whohas_entry;
+    whohas_packet_t *whohas;
+
+    if (peer->whohas_list.head == NULL)
+    {
+        printf("No more WHOHAS LEFT TO SEND TO peer: %d\n", peer->id);
+        return;
+    }
+
+    whohas_entry = peer->whohas_list.head;
+    whohas = whohas_entry->whohas;
+
+    spiffy_sendto(sock,(void *)whohas,whohas->header.packet_len,0,(struct sockaddr *)&(peer->addr),sizeof(peer->addr));
+    
+    peer->whohas_list.head = whohas_entry->next;
+    if (peer->whohas_list.head == NULL)
+    {
+        peer->whohas_list.tail = NULL;
+    }
+
+    free(whohas);
+    free(whohas_entry);
 }
 
 
