@@ -551,8 +551,8 @@ void init_whohas(bt_peer_t *peers, int num_chunks, char *hashes, int my_id)
         }
 
         temp_hashes = hashes + i*MAX_CHUNKS_PER_PACK*HASHLEN;
-        whohas = create_whohas(send_count, temp_hashes);
 
+        peer = (bt_peer_t *)peers;
         while (peer!= NULL)
         {
             whohas = create_whohas(send_count, temp_hashes);
@@ -560,21 +560,18 @@ void init_whohas(bt_peer_t *peers, int num_chunks, char *hashes, int my_id)
             whohas_wrapper->whohas = whohas;
             whohas_wrapper->next = NULL;
 
-            if (peer->id == my_id)
+            if (peer->id != my_id)
             {
-                peer = peer->next;
-                continue;
-            }
-
-            if (peer->whohas_list.head == NULL)
-            {
-                peer->whohas_list.head = whohas_wrapper;
-                peer->whohas_list.tail = whohas_wrapper;
-            }
-            else
-            {
-                peer->whohas_list.tail->next = whohas_wrapper;
-                peer->whohas_list.tail = whohas_wrapper;
+                if (peer->whohas_list.head == NULL)
+                {
+                    peer->whohas_list.head = whohas_wrapper;
+                    peer->whohas_list.tail = whohas_wrapper;
+                }
+                else
+                {
+                    peer->whohas_list.tail->next = whohas_wrapper;
+                    peer->whohas_list.tail = whohas_wrapper;
+                }
             }
 
             peer = peer->next;
@@ -601,6 +598,8 @@ void init_whohas(bt_peer_t *peers, int num_chunks, char *hashes, int my_id)
 
 void send_next_whohas(int sock, bt_peer_t *peer)
 {
+    printf("+++++send_next_whohas init+++++\n");
+
     whohas_entry_t *whohas_entry;
     whohas_packet_t *whohas;
 
@@ -623,6 +622,8 @@ void send_next_whohas(int sock, bt_peer_t *peer)
 
     free(whohas);
     free(whohas_entry);
+
+    printf("+++++send_next_whohas fin+++++\n");
 }
 
 
