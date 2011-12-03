@@ -27,5 +27,6 @@ extern bt_peer_t *me;
 void packet_handler( int sock,void *peer,void *packet);
 void *bytes_to_packet(char *buf, int size);
 void send_whohas(void *peers,int id, int num_chunks, char *all_chunks);
+void retransmit_data(int sock, bt_peer_t *peer);
 
 #endif /* _PACKET_HANDLER_H_ */

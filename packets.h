@@ -107,6 +107,8 @@ typedef struct bt_peer_s {
 	struct bt_peer_s *next;
 
     fetching_or_fetched_t *fetching_or_fetched;
+
+    struct bt_peer_s *curr_to;
 } bt_peer_t;
 
 

@@ -297,6 +297,10 @@ void peer_run(bt_config_t *config)
 	struct sockaddr_in myaddr;
 	fd_set readfds;
 	struct user_iobuf *userbuf;
+
+    struct timeval tv;
+    tv.tv_sec = 3;
+    tv.tv_usec = 0; 
   
 	if ((userbuf = create_userbuf()) == NULL) 
 	{
@@ -326,6 +330,7 @@ void peer_run(bt_config_t *config)
 	spiffy_init(config->identity, (struct sockaddr *)&myaddr, sizeof(myaddr));
   	me = bt_peer_info(config, config->identity);
 	me->fetching_or_fetched = NULL;
+    me->curr_to = NULL;
 
     while (1)
 	{
@@ -333,14 +338,25 @@ void peer_run(bt_config_t *config)
     	FD_SET(STDIN_FILENO, &readfds);
     	FD_SET(sock, &readfds);
 
-    	nfds = select(sock+1, &readfds, NULL, NULL, NULL);
+    	nfds = select(sock+1, &readfds, NULL, NULL, &tv);
+
+        if (nfds == 0 && me->curr_to != NULL)
+        {  
+            printf("timeout occured\n");
+            retransmit_data(sock, me->curr_to);
+            tv.tv_sec = 3;
+            tv.tv_usec = 0;
+        }
 
     	if (nfds > 0) 
 		{
-
-    		if (FD_ISSET(sock, &readfds)) 
+            tv.tv_sec = 3;
+            tv.tv_usec = 0;
+    		
+            if (FD_ISSET(sock, &readfds)) 
 			{
 				process_inbound_udp(sock,out_sock);
+                
     		}
     	  
 			if (FD_ISSET(STDIN_FILENO, &readfds)) 

@@ -35,6 +35,7 @@ void post_receive_cleanup(bt_peer_t *peer);
 void destroy_fof(bt_peer_t *peer);
 
 
+
 void *bytes_to_packet(char *buf, int size)
 {
 	void *packet = (void *)malloc(size);
@@ -314,9 +315,11 @@ void get_handler(int sock, bt_peer_t *peer, get_packet_t *get)
 {
     printf("get_handler init\n");
 
+    me->curr_to = peer;
+
 	if (me->his_request != NULL)
 	{
-		//printf("DENIALLLL!!!\n");
+		printf("DENIALLLL!!!\n");
 		//denied_packet_t * denied = create_denied();
 		//spiffy_sendto(sock,(void *)denied,denied->header.packet_len,0,(struct sockaddr *)(&peer->addr),sizeof(peer->addr));
 		//free(denied);
@@ -347,6 +350,10 @@ void data_handler(int sock, bt_peer_t *peer, data_packet_t *data_p)
 {
     printf("data_handler init\n");
 
+    printf("type: %d\n", data_p->header.packet_type);
+    printf("magicnum: %d\n", data_p->header.magicnum);
+    printf("seqnum: %d\n", data_p->header.seq_num);
+
     FILE *fp;
     int seqnum;
     int acknum;
@@ -356,26 +363,20 @@ void data_handler(int sock, bt_peer_t *peer, data_packet_t *data_p)
 
     if (peer->get_hash_id == PSUEDO_INF)
     {
+        printf("what the fuck psuedo_inf\n");
         free(data_p);
         get_next_chunk(sock, peer);
         return;
     }
-
-    insert_entry(&recv_buffer, time(NULL), data_p);
-
-    acknum = find_ack(&recv_buffer);
-
-    ack = create_ack(acknum);
-
-    spiffy_sendto(sock, (void *)ack, ack->header.packet_len, 0, (struct sockaddr *)&(peer->addr), sizeof(peer->addr));
-
-    free(ack);
-
+    
     /** rethink if this is correct **/
     seqnum = data_p->header.seq_num;
     offset = (peer->get_hash_id)*CHUNKLEN + (seqnum - 1)*BUFLEN;
 
+    printf("type: %d\n", data_p->header.packet_type);
+    printf("magicnum: %d\n", data_p->header.magicnum);
     printf("offset: %d\n", offset);
+    printf("seqnum: %d\n", data_p->header.seq_num);
 
     /** rethink if this is correct **/
     size = data_p->header.packet_len - data_p->header.header_len;
@@ -401,8 +402,23 @@ void data_handler(int sock, bt_peer_t *peer, data_packet_t *data_p)
     fwrite(data_p->data, 1, size, fp);
     fclose(fp);
 
+    insert_entry(&recv_buffer, time(NULL), data_p);
+    
+    acknum = find_ack(&recv_buffer);
+
     printf("acknum: %d\n", acknum);
-    printf("hashid: %d\n", peer->get_hash_id);
+
+    ack = create_ack(acknum);
+
+
+    spiffy_sendto(sock, (void *)ack, ack->header.packet_len, 0, (struct sockaddr *)&(peer->addr), sizeof(peer->addr));
+
+    free(ack);
+
+
+
+    //printf("acknum: %d\n", acknum);
+    //printf("hashid: %d\n", peer->get_hash_id);
 
 
 
@@ -437,6 +453,12 @@ void ack_handler(int sock, bt_peer_t *peer, ack_packet_t *ack)
 {
     printf("ack_handler init\n");
 
+    if (ack->header.ack_num > send_buffer.tail->data_packet->header.seq_num)
+    {
+        free(ack);
+        return;
+    }
+
     if (peer->his_request == NULL)
     {
         free(ack);
@@ -446,21 +468,25 @@ void ack_handler(int sock, bt_peer_t *peer, ack_packet_t *ack)
     if (peer->last_ack == ack->header.ack_num)
     {
         peer->num_dupacks++;
+        destroy_upto_ack(&send_buffer, peer->last_ack);
     }
     else if (peer->last_ack > ack->header.ack_num)
     {
         // do nothing
+        
+        destroy_upto_ack(&send_buffer, peer->last_ack);
     }
     else
     {
         peer->last_ack = ack->header.ack_num;
-        peer->num_dupacks = 0;
+        peer->num_dupacks = 1;
         destroy_upto_ack(&send_buffer, peer->last_ack);
     }
 
-    if (peer->last_ack == FINALACK)
+    if (me->last_seq == FINALACK && peer->last_ack == FINALACK)
     {
         printf("ack_handler fin due to FINALACK\n");
+        me->curr_to = NULL;
         post_send_cleanup(peer);
         return;
     }
@@ -470,9 +496,12 @@ void ack_handler(int sock, bt_peer_t *peer, ack_packet_t *ack)
     if (peer->num_dupacks == 3)
     {
         //send_next_data(sock, peer, peer->send_hash_id, peer->last_ack + 1);
-        
+        peer->num_dupacks = 1;
+
         mult_decrease(&state);
-		spiffy_sendto(sock, send_buffer.head->data_packet, send_buffer.head->data_packet->header.packet_len,0,(struct sockaddr *)&(peer->addr),sizeof(peer->addr));
+        printf("triple dupacks, regen seq num is: %d\n", send_buffer.head->data_packet->header.seq_num);
+		//spiffy_sendto(sock, send_buffer.head->data_packet, send_buffer.head->data_packet->header.packet_len,0,(struct sockaddr *)&(peer->addr),sizeof(peer->addr));
+        retransmit_data(sock, peer);
     }
     else
     {
@@ -637,9 +666,13 @@ void send_next_data(int sock, bt_peer_t *peer, int hash_id, int seqnum)
 	int bytes_read;// = BUFLEN;
     int offset;
 
+    printf("seqnum: %d\n", seqnum);
+    printf("cwnd: %d\n", state.cwnd);
+    printf("lastack: %d\n", peer->last_ack);
+
     if (seqnum > peer->last_ack + state.cwnd)// || send_buffer.num_entry == state.cwnd)// cwnd)
     {
-        printf("1\n");
+        printf("send_next_data fin due to not enough window 1\n");
         return;
     }
 
@@ -722,6 +755,12 @@ void send_next_data(int sock, bt_peer_t *peer, int hash_id, int seqnum)
     printf("==================send_next_data fin================\n");
 }
 
+
+void retransmit_data(int sock, bt_peer_t *peer)
+{
+    printf("retransmit seqnum: %d\n", send_buffer.head->data_packet->header.seq_num);
+    spiffy_sendto(sock, send_buffer.head->data_packet, send_buffer.head->data_packet->header.packet_len, 0, (struct sockaddr *)&(peer->addr),sizeof(peer->addr));
+}
 
 /*
 given a hash value, this returns the hash ID as it pertains to the master chunks data file

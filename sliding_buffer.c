@@ -83,9 +83,10 @@ void insert_entry(sliding_buffer_t *sb, time_t ts, data_packet_t *dp)
 
     if (new_seq < curr->data_packet->header.seq_num)
     {
-        new->next = sb->head;
-        sb->head = new;
-        sb->num_entry++;
+        //new->next = sb->head;
+        //sb->head = new;
+        //sb->num_entry++;
+        free(new);
         return;
     }
 
@@ -197,6 +198,23 @@ int find_ack(sliding_buffer_t *sb)
     return ack;
 }
 
+/*int have_seqnum(sliding_buffer_t *sb, int seqnum)
+{
+    buffer_entry_t *head;
+    
+    if (sb == NULL)
+    {
+        return -1;
+    }
+
+    if (sb->head == NULL);
+    {
+        return -1;
+    }
+
+    curr = sb->head;
+}*/
+
 void destroy_upto_ack(sliding_buffer_t *sb, int ack)
 {
     buffer_entry_t *prev;
@@ -216,7 +234,7 @@ void destroy_upto_ack(sliding_buffer_t *sb, int ack)
     
     while (curr != NULL)
     {
-        if (ack >= curr->data_packet->header.seq_num)
+        if (ack < curr->data_packet->header.seq_num)
         {
             return;
         }

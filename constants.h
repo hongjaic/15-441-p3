@@ -35,6 +35,7 @@
 #define MAXWIN              64
 #define IN_SS               1
 #define IN_CA               0
+#define TIMEOUT             3
 
 /* should probably double this because we're using worng hash size */
 #define MAX_CHUNKS_PER_PACK 74
