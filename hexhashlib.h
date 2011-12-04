@@ -1,3 +1,11 @@
+/**
+ * CS 15-441 Computer Networks
+ * Project: Congestion Control with BitTorrent
+ *
+ * @file    hexhashlib.h
+ * @author  Hong Jai Cho <hongjaic>, Raul Gonzalez <rggonzal>
+ */
+
 #ifndef _HEXHASHLIB_H_
 #define _HEXHASHLIB_H_
 

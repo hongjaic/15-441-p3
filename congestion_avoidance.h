@@ -1,3 +1,11 @@
+/**
+ * CS 15-441 Computer Networks
+ * Project: Congesiton Control with BitTorrent
+ *
+ * @file    congestion_avoidance.h
+ * @author  Hong Jai Cho <hongjaic>, Raul Gonzalez <rggonzal>
+ */
+
 #ifndef _CONGESTION_AVOIDANCE_H_
 #define _CONGESTION_AVOIDANCE_H_
 
@@ -6,6 +14,7 @@
 #include "constants.h"
 #include "macros.h"
 
+/* Congestion control state data structure */
 typedef struct congestion_state_s
 {
     int ca_state;

@@ -1,9 +1,9 @@
-/*
- * peer.c
- *
- * Authors:
- *
- *
+/**
+ * CS 15-441 Computer Networks
+ * Project: Congestion Control with BitTorrent
+ * 
+ * @file    peer.c
+ * @author  Hong Jai Cho <hongjaic>, Raul Gonzalez <rggonzal>
  */
 #include <assert.h>
 #include <sys/types.h>
@@ -23,18 +23,19 @@
 #include "sliding_buffer.h"
 #include "congestion_avoidance.h"
 
-#define TO_HEX(line) 0x|line
+/* Configuration data structures */
 bt_config_t config;
 local_chunks_t local_chunks;
 master_chunks_t master_chunks;
 char master_data_file[BT_FILENAME_LEN];
 char request_chunks_file[BT_FILENAME_LEN];
 
-uint32_t cwnd = 8;
+/* Congestion controllers */
 sliding_buffer_t recv_buffer;
 sliding_buffer_t send_buffer;
 congestion_state_t state;
 
+/* This peer */
 bt_peer_t *me;	
 
 void peer_run(bt_config_t *config);
@@ -48,11 +49,13 @@ int main(int argc, char **argv)
 	bt_parse_command_line(&config);
   	assert(config.has_chunk_file != NULL);
   	bt_dump_config(&config);
-  	
-	//copy all of my local chunks to memory. 
+
+    // Copy local chunks to memory.
 	local_chunks_init(config.has_chunk_file);
+    // Copy master chunks to memoery.
     master_chunks_init(config.chunk_file);
 
+    // Initialize the windows
     recv_buffer.num_entry = 0;
     recv_buffer.head = NULL;
     recv_buffer.tail = NULL;
@@ -65,29 +68,18 @@ int main(int argc, char **argv)
 
   	DPRINTF(DEBUG_INIT, "peer.c main beginning\n");
 
-//#ifdef TESTING
-//  config.identity = 1; // your group number here
-//  strcpy(config.chunk_file, "chunkfile");
-//  strcpy(config.has_chunk_file, "haschunks");
-//#endif
+    peer_run(&config);
 
-  //bt_parse_command_line(&config);
-
-//#ifdef DEBUG
-//  if (debug & DEBUG_INIT) {
-//    bt_dump_config(&config);
-//  }
-//#endif
-  
-  peer_run(&config);
-  return 0;
+    return 0;
 }
 
 
-/*
-opens up the haschunk file for this peer, and copies
-all of the local chunk hashes to global variable "local_chunks"
-*/
+/**
+ * local_chunks_init -
+ * Copies the local chunks into memory.
+ *
+ * @param has_chunk_file    the file of local chunks
+ */
 void local_chunks_init(char *has_chunk_file)
 {
 	int i, j;
@@ -101,7 +93,6 @@ void local_chunks_init(char *has_chunk_file)
     local_chunks.num_chunks = 0;
     local_chunks.hehas = NULL;
 
-	//set_hasfile(has_chunk_file);
     fd = fopen(has_chunk_file,"r");
 	assert(fd != NULL);
     
@@ -146,6 +137,12 @@ void local_chunks_init(char *has_chunk_file)
 }
 
 
+/**
+ * master_chunks_init -
+ * Copies the master chunks into memory.
+ *
+ * @param master_chunk_file the mast chunks file
+ */
 void master_chunks_init(char *master_chunk_file)
 {
 	int i, j;
@@ -160,7 +157,6 @@ void master_chunks_init(char *master_chunk_file)
     master_chunks.num_chunks = 0;
     master_chunks.hehas = NULL;
 
-	//set_hasfile(has_chunk_file);
     fd = fopen(master_chunk_file, "r");
 	assert(fd != NULL);
     
@@ -224,6 +220,14 @@ void master_chunks_init(char *master_chunk_file)
 }
 
 
+/**
+ * process_cmd -
+ * Inpects the command liens input arguments and send whohas packets to peers if
+ * the file is in the system.
+ *
+ * @param chunkfile     the requested chunks
+ * @param outputfile    the output file to download into
+ */
 void process_cmd(char *chunkfile, char *outputfile) 
 {
     int chunk_num = 0;
@@ -235,10 +239,9 @@ void process_cmd(char *chunkfile, char *outputfile)
 
     if (chunk_fd == NULL)
     {
-        fprintf(stderr, "The files you're looking for does not exist.\n");
+        fprintf(stderr, "The file you're looking for does not exist.\n");
         return;
     }
-	//assert(chunk_fd!=NULL);	
 	
     strcpy(request_chunks_file, chunkfile);
     strcpy(config.output_file, outputfile);
@@ -259,10 +262,17 @@ void process_cmd(char *chunkfile, char *outputfile)
 	}
 	fclose(chunk_fd);
 
-	//send_whohas((void *)config.peers, config.identity, chunk_num, hashes);
     init_whohas(config.peers, chunk_num, hashes, config.identity);
 }
 
+
+/**
+ * handle_user_input -
+ * Parses the uer inputs into file names.
+ *
+ * @param line      user command input
+ * @param cbdata    cbdata
+ */
 void handle_user_input(char *line, void *cbdata) 
 {
   char chunkf[128], outf[128];
@@ -279,7 +289,15 @@ void handle_user_input(char *line, void *cbdata)
   	}
 }
 
-void process_inbound_udp(int in_sock,int out_sock) 
+
+/**
+ * process_inboud_udp -
+ * Redirects received packet to packet handler.
+ *
+ * @param in_sock   read socekt
+ * @param out_sock  write socket
+ */
+void process_inbound_udp(int in_sock, int out_sock) 
 {
 	struct sockaddr_in from;
 	socklen_t fromlen;
@@ -292,12 +310,16 @@ void process_inbound_udp(int in_sock,int out_sock)
 	len = spiffy_recvfrom(in_sock, buf, MAX_PACKET_LEN, 0, (struct sockaddr *) &from, &fromlen);	
 	packet = bytes_to_packet(buf,len);
 	peer = bt_peer_info2(&config, &from);
-	packet_handler(out_sock, (void *)peer, packet);
-  
+	packet_handler(out_sock, (void *)peer, packet);  
 }
 
 
-
+/**
+ * peer_run -
+ * The main runnng loop that handles all incoming request and user inputs.
+ *
+ * @param config    configuration of this peer
+ */
 void peer_run(bt_config_t *config) 
 {
     int sock, out_sock; 
@@ -348,8 +370,11 @@ void peer_run(bt_config_t *config)
 
     	nfds = select(sock+1, &readfds, NULL, NULL, &tv);
 
+        // Timeout
         if (nfds == 0)
         {
+            // If timeout occurred durring transmission of data packets,
+            // retransmit.
             if (me->curr_to != NULL)
             {
                 printf("timeout occured\n");
@@ -357,6 +382,8 @@ void peer_run(bt_config_t *config)
             }
             else
             {
+                // If timeout occurrced for none-data packets, retransmit the
+                // corresponding packet.
                 curr_peer = config->peers;
                 while (curr_peer != NULL)
                 {
@@ -416,7 +443,14 @@ void peer_run(bt_config_t *config)
 	//close(sock);
 }
 	
-	
+
+/**
+ * peer_total_cleanup -
+ * This function initializes state if the peer that the requests are sent to
+ * seems to be dead.
+ *
+ * @param peer  peer that the request was made to
+ */
 void peer_total_cleanup(bt_peer_t *peer)
 {
     peer->num_chunks = 0;

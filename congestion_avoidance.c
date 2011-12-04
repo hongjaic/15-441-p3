@@ -1,5 +1,19 @@
+/**
+ * CS 15-441 Computer Networks
+ * Project: Congestion Control with BitTorrent
+ *
+ * @file    congestion_avoidance.c
+ * @author  Hong Jai Cho <hongjaic>, Raul Gonzalez <rggonzal>
+ */
+
 #include "congestion_avoidance.h"
 
+/**
+ * init_congestion_state -
+ * Initializes congestion controller.
+ *
+ * @param s congestion control state data structure
+ */
 void init_congestion_state(congestion_state_t *s)
 {
     if (s == NULL)
@@ -13,6 +27,13 @@ void init_congestion_state(congestion_state_t *s)
     s->curr_round = 0;
 }
 
+
+/**
+ * slow_start -
+ * This function modifies window size based on the specifications of slow start.
+ *
+ * @param s congestion control state data structure
+ */
 void slow_start(congestion_state_t *s)
 {
     uint32_t cwnd;
@@ -40,6 +61,14 @@ void slow_start(congestion_state_t *s)
     }
 }
 
+
+/**
+ * mult_decrease -
+ * This function modifies window size based on the specification of
+ * multiplicative decrease.
+ *
+ * @param s congestion control state data structure
+ */
 void mult_decrease(congestion_state_t *s)
 {
     if (s == NULL)
@@ -54,6 +83,14 @@ void mult_decrease(congestion_state_t *s)
     s->cwnd = 1;
 }
 
+
+/**
+ * add_increase -
+ * This function modifies window size based on the specifications of additive
+ * increase.
+ *
+ * @param s congestion control state data structure
+ */
 void add_increase(congestion_state_t *s)
 {
     if (s == NULL)

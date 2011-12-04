@@ -1,3 +1,11 @@
+/**
+ * CS 15-441 Computer Networks
+ * Project: Congestion Control with BitTorrent
+ * 
+ * @file    packet_handler.h
+ * @author  Hong Jai Cho <hongjaic>, Raulg Gonzalez <rggonzal>
+ */
+
 #ifndef _PACKET_HANDLER_H_
 #define _PACKET_HANDLER_H_
 
@@ -19,7 +27,6 @@ extern char master_data_file[BT_FILENAME_LEN];
 extern char request_chunks_file[BT_FILENAME_LEN];
 extern sliding_buffer_t recv_buffer;
 extern sliding_buffer_t send_buffer;
-extern uint32_t cwnd;
 extern congestion_state_t state;
 
 extern bt_peer_t *me;

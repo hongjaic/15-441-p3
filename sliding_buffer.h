@@ -1,3 +1,14 @@
+/**
+ * CS 15-441 Computer Networks
+ * Project: Congestion Control with BitTorrent
+ *
+ * This file defines the data structures and fuctions for the sliding window
+ * used for ocngestion control.
+ *
+ * @file    sliding_buffer.h
+ * @author  Hong Jai Cho <hongjaic>, Raul Gonzalez <rggonzal>
+ */
+
 #ifndef _SLIDING_BUFFER_H_
 #define _SLIDING_BUFFER_H_
 
@@ -6,6 +17,7 @@
 #include <stdlib.h>
 #include "packets.h"
 
+/* Sliding window entry */
 typedef struct buffer_entry_s
 {
     time_t time_sent;
@@ -13,6 +25,7 @@ typedef struct buffer_entry_s
     struct buffer_entry_s *next;
 } buffer_entry_t;
 
+/* Sliding window data structure */
 typedef struct sliding_buffer_s
 {
     uint32_t num_entry;

@@ -1,5 +1,6 @@
 /**
  * CS 15-441 Computer networks
+ * Project: Congestion Control with BitTorrent
  *
  * Collection of all constants.
  *
@@ -7,8 +8,9 @@
  * @author  Hong Jai Cho <hongjaic>, Raul Gonzalez <rggonzal>
  */
 
-#ifndef CONSTANTS_H
-#define CONSTANTS_H
+#ifndef _CONSTANTS_H_
+#define _CONSTANTS_H_
+
 
 #define MAX_RETRANSMITS     3
 
@@ -39,16 +41,11 @@
 #define IN_CA               0
 #define TIMEOUT             3
 
-/* should probably double this because we're using worng hash size */
 #define MAX_CHUNKS_PER_PACK 74
 
 #define BT_FILENAME_LEN     255
 #define BT_MAX_PEERS        1024
 
-//Change master data file here
-#define MASTER_DATA_FILE    "tmp/C.tar"
 
-
-
-#endif
+#endif /* _CONSTANTS_H_ */
 

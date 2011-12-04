@@ -1,10 +1,11 @@
 /**
  * CS 15-441 Computer Networks
- *
- * Struct definition for an WHOHAS packet.
+ * Project: Congestion Control with BitTorrent
+ * 
+ * This is the file that defines all general structs (packets, peers, etc).
  *
  * @file    packets.h
- * @author  Raul Gonzalez <rggonzal>,Hong Jai Cho <hongjaic>
+ * @author  Hong Jai Cho <hongjaic>, Raul Gonzalez <rggonzal>
  */
 
 #ifndef _PACKETS_H_
@@ -105,7 +106,6 @@ typedef struct whohas_list_s
 
 typedef struct bt_peer_s {
 	unsigned short  id;
-	//ihave_packet_t *hehas;
     uint32_t num_chunks;
     hehas_t *hehas;
 	uint32_t chunks_fetched;
@@ -121,9 +121,8 @@ typedef struct bt_peer_s {
     fetching_or_fetched_t *fetching_or_fetched;
 
     struct bt_peer_s *curr_to;
-    
-    whohas_list_t whohas_list;
 
+    whohas_list_t whohas_list;
     whohas_packet_t * pending_whohas;
     ihave_packet_t *pending_ihave;
     get_packet_t *pending_get;

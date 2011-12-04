@@ -1,3 +1,11 @@
+/**
+ * CS 15-441 Computer Networks
+ * Project: Congestion Control with BitTorrent
+ *
+ * @file    macros.h
+ * @author  Hong Jai Cho <hongjaic>, Raul Gonzalez <rggonzal>
+ */
+
 #ifndef _MACROS_H_
 #define _MACROS_H_
 

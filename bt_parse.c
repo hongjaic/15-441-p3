@@ -175,11 +175,9 @@ void bt_parse_peer_list(bt_config_t *config) {
 
         node->whohas_list.head = NULL;
         node->whohas_list.tail = NULL;
-
         node->pending_whohas = NULL;
         node->pending_ihave = NULL;
         node->pending_get = NULL;
-
         node->num_retransmits = 0;
 
 	    config->peers = node;
