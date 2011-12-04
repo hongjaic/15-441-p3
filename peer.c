@@ -40,7 +40,7 @@ bt_peer_t *me;
 void peer_run(bt_config_t *config);
 void local_chunks_init(char *has_chunk_file);
 void master_chunks_init(char *master_chunk_file);
-
+void peer_total_cleanup(bt_peer_t *peer);
 
 int main(int argc, char **argv) 
 {
@@ -366,17 +366,26 @@ void peer_run(bt_config_t *config)
                         continue;
                     }
 
+                    if (curr_peer->num_retransmits == MAX_RETRANSMITS)
+                    {
+                        printf("Attempted 3 retransmits, target node is probably down.\n");
+                        peer_total_cleanup(curr_peer);
+                    }
+
                     if (curr_peer->pending_whohas != NULL)
                     {
                         retransmit_whohas(sock, curr_peer);
+                        curr_peer->num_retransmits++;
                     }
                     else if (curr_peer->pending_ihave != NULL)
                     {
                         retransmit_ihave(sock, curr_peer);
+                        curr_peer->num_retransmits++;
                     }
                     else if (curr_peer->pending_get != NULL)
                     {
                         retransmit_get(sock, curr_peer);
+                        curr_peer->num_retransmits++;
                     }
 
                     curr_peer = curr_peer->next;
@@ -408,6 +417,40 @@ void peer_run(bt_config_t *config)
 }
 	
 	
+void peer_total_cleanup(bt_peer_t *peer)
+{
+    peer->num_chunks = 0;
+    peer->chunks_fetched = 0;
+    peer->last_ack = 0;
+    peer->num_dupacks = 0;
+    
+    if (peer->his_request != NULL)
+    {
+        free(peer->his_request);
+    }
+
+    peer->send_hash_id = PSUEDO_INF;
+    peer->get_hash_id = PSUEDO_INF;
+
+    destroy_hehas(peer);
+    destroy_whohas_list(peer);
+
+    peer->pending_whohas = NULL;
+    
+    if (peer->pending_ihave != NULL)
+    {
+        free(peer->pending_ihave);
+        peer->pending_ihave = NULL;
+    }
+    
+    if (peer->pending_get != NULL)
+    {
+        free(peer->pending_get);
+        peer->pending_get = NULL;
+    }
+
+    peer->num_retransmits = 0;
+}
 	
 
 

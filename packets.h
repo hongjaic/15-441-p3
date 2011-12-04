@@ -127,6 +127,7 @@ typedef struct bt_peer_s {
     whohas_packet_t * pending_whohas;
     ihave_packet_t *pending_ihave;
     get_packet_t *pending_get;
+    uint32_t num_retransmits;
 } bt_peer_t;
 
 

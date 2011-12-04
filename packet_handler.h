@@ -32,4 +32,7 @@ void retransmit_ihave(int sock, bt_peer_t *peer);
 void retransmit_get(int sock, bt_peer_t *peer);
 void retransmit_data(int sock, bt_peer_t *peer);
 
+void destroy_hehas(bt_peer_t *peer);
+void destroy_whohas_list(bt_peer_t *peer);
+
 #endif /* _PACKET_HANDLER_H_ */

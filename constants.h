@@ -10,6 +10,8 @@
 #ifndef CONSTANTS_H
 #define CONSTANTS_H
 
+#define MAX_RETRANSMITS     3
+
 #define PSUEDO_INF          (1<<30)
 
 #define HEADERLEN   		16

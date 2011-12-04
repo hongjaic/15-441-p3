@@ -180,6 +180,8 @@ void bt_parse_peer_list(bt_config_t *config) {
         node->pending_ihave = NULL;
         node->pending_get = NULL;
 
+        node->num_retransmits = 0;
+
 	    config->peers = node;
 	}
 }

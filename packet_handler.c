@@ -1053,3 +1053,43 @@ void destroy_fof(bt_peer_t *peer)
 
     peer->fetching_or_fetched = NULL;
 }
+
+
+void destroy_hehas(bt_peer_t *peer)
+{
+    hehas_t *prev;
+    hehas_t *curr = peer->hehas;
+
+    while (curr != NULL)
+    {
+        prev = curr;
+        curr = curr->next;
+
+        free(prev);
+    }
+
+    peer->hehas = NULL;
+}
+
+
+void destroy_whohas_list(bt_peer_t *peer)
+{
+    whohas_entry_t *prev;
+    whohas_entry_t *curr = peer->whohas_list.head;
+
+    while (curr != NULL)
+    {
+        prev = curr;
+        curr = curr->next;
+
+        if (prev->whohas != NULL)
+        {
+            free(prev->whohas);
+        }
+
+        free(prev);
+    }
+
+    peer->whohas_list.head = NULL;
+    peer->whohas_list.tail = NULL;
+}
