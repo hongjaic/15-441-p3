@@ -123,6 +123,10 @@ typedef struct bt_peer_s {
     struct bt_peer_s *curr_to;
     
     whohas_list_t whohas_list;
+
+    whohas_packet_t * pending_whohas;
+    ihave_packet_t *pending_ihave;
+    get_packet_t *pending_get;
 } bt_peer_t;
 
 

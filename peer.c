@@ -304,6 +304,7 @@ void peer_run(bt_config_t *config)
 	struct sockaddr_in myaddr;
 	fd_set readfds;
 	struct user_iobuf *userbuf;
+    bt_peer_t *curr_peer;
 
     struct timeval tv;
     tv.tv_sec = 3;
@@ -347,10 +348,41 @@ void peer_run(bt_config_t *config)
 
     	nfds = select(sock+1, &readfds, NULL, NULL, &tv);
 
-        if (nfds == 0 && me->curr_to != NULL)
-        {  
-            printf("timeout occured\n");
-            retransmit_data(sock, me->curr_to);
+        if (nfds == 0)
+        {
+            if (me->curr_to != NULL)
+            {
+                printf("timeout occured\n");
+                retransmit_data(sock, me->curr_to);
+            }
+            else
+            {
+                curr_peer = config->peers;
+                while (curr_peer != NULL)
+                {
+                    if (curr_peer->id == config->identity)
+                    {
+                        curr_peer = curr_peer->next;
+                        continue;
+                    }
+
+                    if (curr_peer->pending_whohas != NULL)
+                    {
+                        retransmit_whohas(sock, curr_peer);
+                    }
+                    else if (curr_peer->pending_ihave != NULL)
+                    {
+                        retransmit_ihave(sock, curr_peer);
+                    }
+                    else if (curr_peer->pending_get != NULL)
+                    {
+                        retransmit_get(sock, curr_peer);
+                    }
+
+                    curr_peer = curr_peer->next;
+                }
+            }
+                
             tv.tv_sec = 3;
             tv.tv_usec = 0;
         }

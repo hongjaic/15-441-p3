@@ -202,6 +202,7 @@ void whohas_handler(int sock, bt_peer_t *peer, whohas_packet_t *whohas)
 
 	int i, j;
 	ihave_packet_t *ihave;
+    denied_packet_t * denied;
     uint32_t chunk_hits[HASHLEN_PACKET*(whohas->num_chunks)];
     int num_chunk_hits;
     hehas_t *next_local_chunk;
@@ -247,8 +248,16 @@ void whohas_handler(int sock, bt_peer_t *peer, whohas_packet_t *whohas)
 	    ihave = create_ihave(chunk_hits, num_chunk_hits);	
 		//printf("sending %d chunks\n",ihave->chunks.num_chunks);
 		spiffy_sendto(sock, (void *)ihave, ihave->header.packet_len, 0, (struct sockaddr *)(&peer->addr), sizeof(peer->addr));
-		free(ihave);
+		//free(ihave);
+
+        peer->pending_ihave = ihave;
 	}
+    else
+    {
+        denied = create_denied();
+		spiffy_sendto(sock,(void *)denied,denied->header.packet_len,0,(struct sockaddr *)(&peer->addr),sizeof(peer->addr));
+		free(denied);
+    }
 
     printf("whowhas handler fin\n");
 }
@@ -269,11 +278,29 @@ void ihave_handler(int sock, bt_peer_t *peer, ihave_packet_t *ihave)
 
     hehas_t *next_chunk, *append_to = peer->hehas;
     int i, j, num_chunks = ihave->num_chunks;
+    whohas_entry_t *tmp_entry;
+    whohas_packet_t *tmp_packet;
 	//printf("node %d has %d chunks:\n",peer->id, ihave->chunks.num_chunks);
 	//peer->hehas = hehas;
 	//peer->bytes_received = 0;
-	//peer->chunks_fetched = 0;
+	peer->chunks_fetched = 0;
     
+    if (peer->pending_whohas != NULL)
+    {
+        tmp_packet = peer->whohas_list.head->whohas;
+        tmp_entry = peer->whohas_list.head;
+        peer->whohas_list.head = peer->whohas_list.head->next;
+        if (peer->whohas_list.head == NULL)
+        {
+            peer->whohas_list.tail = NULL;
+        }
+
+        free(tmp_packet);
+        free(tmp_entry);
+
+        peer->pending_whohas = NULL;
+    }
+
     for (i = 0; i < num_chunks; i++)
     {
         next_chunk = (hehas_t *)malloc(sizeof(hehas_t));
@@ -320,13 +347,19 @@ void get_handler(int sock, bt_peer_t *peer, get_packet_t *get)
 
 	if (me->his_request != NULL)
 	{
-		printf("DENIALLLL!!!\n");
-		//denied_packet_t * denied = create_denied();
-		//spiffy_sendto(sock,(void *)denied,denied->header.packet_len,0,(struct sockaddr *)(&peer->addr),sizeof(peer->addr));
-		//free(denied);
+		printf("!!!!!DENIALLLL!!!!!\n");
+		denied_packet_t * denied = create_denied();
+		spiffy_sendto(sock,(void *)denied,denied->header.packet_len,0,(struct sockaddr *)(&peer->addr),sizeof(peer->addr));
+		free(denied);
 		return;	
 	}
-	
+
+    if (peer->pending_ihave != NULL)
+    {
+        free(peer->pending_ihave);
+        peer->pending_ihave = NULL;
+    }
+
     me->his_request = get;
 	peer->his_request = get;
 
@@ -368,6 +401,12 @@ void data_handler(int sock, bt_peer_t *peer, data_packet_t *data_p)
         free(data_p);
         get_next_chunk(sock, peer);
         return;
+    }
+
+    if (peer->pending_get != NULL)
+    {
+        free(peer->pending_get);
+        peer->pending_get = NULL;
     }
     
     /** rethink if this is correct **/
@@ -518,8 +557,40 @@ void ack_handler(int sock, bt_peer_t *peer, ack_packet_t *ack)
 
 void denied_handler(int sock,bt_peer_t *peer, denied_packet_t * denied)
 {
-	printf("GOT DENIED!!!\n");
+    whohas_entry_t *prev;
+    whohas_entry_t *curr;
 
+	printf("!!!GOT DENIED!!!\n");
+    
+    if (peer->pending_get != NULL)
+    {
+        free(peer->pending_get);
+        peer->pending_get = NULL;
+    }
+
+    if (peer->pending_ihave != NULL)
+    {
+        free(peer->pending_ihave);
+        peer->pending_ihave = NULL;
+    }
+
+    if (peer->pending_whohas != NULL)
+    {
+        curr = peer->whohas_list.head;
+        while (curr != NULL)
+        {
+            prev = curr;
+            curr = curr->next;
+
+            free(prev->whohas);
+            free(prev);
+        }
+
+        peer->whohas_list.head = NULL;
+        peer->whohas_list.tail = NULL;
+
+        peer->pending_whohas = NULL;
+    }
 }
 
 
@@ -614,14 +685,16 @@ void send_next_whohas(int sock, bt_peer_t *peer)
 
     spiffy_sendto(sock,(void *)whohas,whohas->header.packet_len,0,(struct sockaddr *)&(peer->addr),sizeof(peer->addr));
     
-    peer->whohas_list.head = whohas_entry->next;
-    if (peer->whohas_list.head == NULL)
-    {
-        peer->whohas_list.tail = NULL;
-    }
+    //peer->whohas_list.head = whohas_entry->next;
+    //if (peer->whohas_list.head == NULL)
+    //{
+    //    peer->whohas_list.tail = NULL;
+    //}
 
-    free(whohas);
-    free(whohas_entry);
+    //free(whohas);
+    //free(whohas_entry);
+    
+    peer->pending_whohas = peer->whohas_list.head->whohas;
 
     printf("+++++send_next_whohas fin+++++\n");
 }
@@ -693,9 +766,12 @@ void get_next_chunk(int sock, bt_peer_t *peer)
 
     peer->get_hash_id = next_chunk->chunk_id;
     get_p = create_get(next_chunk->chunkhash);
+
+    peer->pending_get = get_p;
+
 	spiffy_sendto(sock, (void *)get_p, get_p->header.packet_len, 0, (struct sockaddr *)&(peer->addr), sizeof(peer->addr));
-	
-    free(get_p);
+
+    //free(get_p);
 
     printf("get_next_chunk fin\n");
 }
@@ -814,6 +890,28 @@ void retransmit_data(int sock, bt_peer_t *peer)
     printf("retransmit seqnum: %d\n", send_buffer.head->data_packet->header.seq_num);
     spiffy_sendto(sock, send_buffer.head->data_packet, send_buffer.head->data_packet->header.packet_len, 0, (struct sockaddr *)&(peer->addr),sizeof(peer->addr));
 }
+
+
+void retransmit_whohas(int sock, bt_peer_t *peer)
+{
+    printf("retransmit whohas\n");
+    spiffy_sendto(sock, peer->pending_whohas, peer->pending_whohas->header.packet_len, 0, (struct sockaddr *)&(peer->addr),sizeof(peer->addr));
+}
+
+
+void retransmit_ihave(int sock, bt_peer_t *peer)
+{
+    printf("retransmit ihave\n");
+    spiffy_sendto(sock, peer->pending_ihave, peer->pending_ihave->header.packet_len, 0, (struct sockaddr *)&(peer->addr),sizeof(peer->addr));
+}
+
+
+void retransmit_get(int sock, bt_peer_t *peer)
+{
+    printf("retransmit get\n");
+    spiffy_sendto(sock, peer->pending_get, peer->pending_get->header.packet_len, 0, (struct sockaddr *)&(peer->addr),sizeof(peer->addr));
+}
+
 
 /*
 given a hash value, this returns the hash ID as it pertains to the master chunks data file
