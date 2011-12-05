@@ -19,16 +19,16 @@ CP2
 We tested sending and receiving files using variable toplologies. Some of them
 are:
 
-node --- node
+node1 --- node2
 
-node --- node --- node
+node1 --- node2 --- node3
 
 
-[node node]----------[node node]
-                |
-                |
-                |
-           [node node]
+[node1  node2]----------[node3  node4]
+                  |
+                  |
+                  |
+           [node5  node6]
 
 To make sure that our system works in edge cases, we tried out many different
 actions such as:
