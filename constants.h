@@ -12,7 +12,7 @@
 #define _CONSTANTS_H_
 
 
-#define MAX_RETRANSMITS     3
+#define MAX_RETRANSMITS     5
 #define MAX_DATA_RETRANSMIT 10
 
 #define PSUEDO_INF          (1<<30)

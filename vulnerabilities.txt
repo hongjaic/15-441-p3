@@ -20,12 +20,12 @@ CP2
 
 1) One vulnerability that our system has, and did not find the time to fix is
 that when data packets are being transmitted, and the sending side goes down,
-the receiving side might not get the complete file.
+the receiving side might not get the complete file (I think).
 
 2) Another vulnerability is the down node detection. In our system, a node is
 assumed to be down after 10 data packet retramissions, or 3 none-data packet
 retransmission. This does good job in most cases, but sometimes would make a
-node assume that another node is down. Our system (like all other systems)
-would work the best in good internet conditions.
+node assume that another node is down (with very slim chance). Our system 
+(like all other systems) would work the best in good internet conditions.
 
 ----------------------------------------------------------------------------------

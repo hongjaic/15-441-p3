@@ -45,13 +45,13 @@ void peer_total_cleanup(bt_peer_t *peer);
 
 int main(int argc, char **argv) 
 {
- 	bt_init(&config, argc, argv);	
-	bt_parse_command_line(&config);
-  	assert(config.has_chunk_file != NULL);
-  	bt_dump_config(&config);
+    bt_init(&config, argc, argv);	
+    bt_parse_command_line(&config);
+    assert(config.has_chunk_file != NULL);
+    bt_dump_config(&config);
 
     // Copy local chunks to memory.
-	local_chunks_init(config.has_chunk_file);
+    local_chunks_init(config.has_chunk_file);
     // Copy master chunks to memoery.
     master_chunks_init(config.chunk_file);
 
@@ -62,7 +62,7 @@ int main(int argc, char **argv)
 
     init_congestion_state(&state);
 
-  	DPRINTF(DEBUG_INIT, "peer.c main beginning\n");
+    DPRINTF(DEBUG_INIT, "peer.c main beginning\n");
 
     peer_run(&config);
 
@@ -78,43 +78,43 @@ int main(int argc, char **argv)
  */
 void local_chunks_init(char *has_chunk_file)
 {
-	int i, j;
+    int i, j;
     int chunkid;
-	char buf[BUFLEN];
-	char *hash;
+    char buf[BUFLEN];
+    char *hash;
     FILE *fd;
     hehas_t *newchunk;
     hehas_t *append_to;
-     
+
     local_chunks.num_chunks = 0;
     local_chunks.hehas = NULL;
 
     fd = fopen(has_chunk_file,"r");
-	assert(fd != NULL);
-    
-    while (fgets(buf,BUFLEN,fd) != NULL)
-	{
-    	local_chunks.num_chunks++;		
-	}
+    assert(fd != NULL);
 
-	rewind(fd);
+    while (fgets(buf,BUFLEN,fd) != NULL)
+    {
+        local_chunks.num_chunks++;		
+    }
+
+    rewind(fd);
 
     append_to = local_chunks.hehas;
 
-	for(i = 0; i < local_chunks.num_chunks; i++)
-	{
-		fgets(buf, BUFLEN, fd);
-		chunkid = atoi(strtok(buf," "));
-		hash = strtok(NULL," ");
+    for(i = 0; i < local_chunks.num_chunks; i++)
+    {
+        fgets(buf, BUFLEN, fd);
+        chunkid = atoi(strtok(buf," "));
+        hash = strtok(NULL," ");
 
         newchunk = (hehas_t *)malloc(sizeof(hehas_t));
         newchunk->chunk_id = chunkid;
-        
+
         for (j = 0; j < 5; j++)
         {
             (newchunk->chunkhash)[j] = hash_to_int(hash, j*8, 8);
         }
-        
+
         newchunk->next = NULL;
 
         if (append_to == NULL)
@@ -127,9 +127,9 @@ void local_chunks_init(char *has_chunk_file)
             append_to->next = newchunk;
             append_to = newchunk;
         }
-	}
+    }
 
-	fclose(fd);
+    fclose(fd);
 }
 
 
@@ -141,33 +141,33 @@ void local_chunks_init(char *has_chunk_file)
  */
 void master_chunks_init(char *master_chunk_file)
 {
-	int i, j;
+    int i, j;
     int chunkid;
-	char buf[BUFLEN];
+    char buf[BUFLEN];
     char *tmp_master_data_file;
-	char *hash;
+    char *hash;
     FILE *fd;
     hehas_t *newchunk;
     hehas_t *append_to;
-     
+
     master_chunks.num_chunks = 0;
     master_chunks.hehas = NULL;
 
     fd = fopen(master_chunk_file, "r");
-	assert(fd != NULL);
-    
+    assert(fd != NULL);
+
     while (fgets(buf,BUFLEN,fd) != NULL)
-	{
-    	master_chunks.num_chunks++;		
-	}
+    {
+        master_chunks.num_chunks++;		
+    }
     master_chunks.num_chunks -= 2;
 
-	rewind(fd);
+    rewind(fd);
 
     append_to = master_chunks.hehas;
 
-	for(i = 0; i < master_chunks.num_chunks + 2; i++)
-	{
+    for(i = 0; i < master_chunks.num_chunks + 2; i++)
+    {
         memset(buf, 0, BUFLEN);
 
         if (i == 0)
@@ -186,9 +186,9 @@ void master_chunks_init(char *master_chunk_file)
             continue;
         }
 
-		fgets(buf, BUFLEN, fd);
-		chunkid = atoi(strtok(buf," "));
-		hash = strtok(NULL," ");
+        fgets(buf, BUFLEN, fd);
+        chunkid = atoi(strtok(buf," "));
+        hash = strtok(NULL," ");
 
         newchunk = (hehas_t *)malloc(sizeof(hehas_t));
         newchunk->chunk_id = chunkid;
@@ -210,9 +210,9 @@ void master_chunks_init(char *master_chunk_file)
             append_to->next = newchunk;
             append_to = newchunk;
         }
-	}
+    }
 
-	fclose(fd);
+    fclose(fd);
 }
 
 
@@ -227,11 +227,11 @@ void master_chunks_init(char *master_chunk_file)
 void process_cmd(char *chunkfile, char *outputfile) 
 {
     int chunk_num = 0;
-	char *hash, *hashes;
-	int offset = 0;
-	char buf[BUFLEN];
+    char *hash, *hashes;
+    int offset = 0;
+    char buf[BUFLEN];
     char *ext;
-	char temp_chunkfile[BUFLEN];
+    char temp_chunkfile[BUFLEN];
 
     strcpy(temp_chunkfile, chunkfile);
     strtok(temp_chunkfile, ".");
@@ -250,25 +250,25 @@ void process_cmd(char *chunkfile, char *outputfile)
         fprintf(stderr, "The file you're looking for does not exist.\n");
         return;
     }
-	
+
     strcpy(request_chunks_file, chunkfile);
     strcpy(config.output_file, outputfile);
 
     while(fgets(buf,BUFLEN,chunk_fd) != NULL)
-	{
-		chunk_num++;
-	}
-	rewind(chunk_fd);
-	
-	hashes = (char *)malloc(chunk_num*HASHLEN);
-	while(fgets(buf,BUFLEN,chunk_fd) != NULL)
-	{
-		strtok(buf," ");
-		hash = strtok(NULL, " ");
-		memcpy(hashes+offset, hash, HASHLEN);
-	    offset += HASHLEN;
-	}
-	fclose(chunk_fd);
+    {
+        chunk_num++;
+    }
+    rewind(chunk_fd);
+
+    hashes = (char *)malloc(chunk_num*HASHLEN);
+    while(fgets(buf,BUFLEN,chunk_fd) != NULL)
+    {
+        strtok(buf," ");
+        hash = strtok(NULL, " ");
+        memcpy(hashes+offset, hash, HASHLEN);
+        offset += HASHLEN;
+    }
+    fclose(chunk_fd);
 
     init_whohas(config.peers, chunk_num, hashes, config.identity);
 }
@@ -283,18 +283,18 @@ void process_cmd(char *chunkfile, char *outputfile)
  */
 void handle_user_input(char *line, void *cbdata) 
 {
-  char chunkf[128], outf[128];
+    char chunkf[128], outf[128];
 
-  bzero(chunkf, sizeof(chunkf));
-  bzero(outf, sizeof(outf));
+    bzero(chunkf, sizeof(chunkf));
+    bzero(outf, sizeof(outf));
 
-	if (sscanf(line, "GET %120s %120s", chunkf, outf)) 
-	{
-		if (strlen(outf) > 0) 
-		{
-	      process_cmd(chunkf, outf);
-    	}
-  	}
+    if (sscanf(line, "GET %120s %120s", chunkf, outf)) 
+    {
+        if (strlen(outf) > 0) 
+        {
+            process_cmd(chunkf, outf);
+        }
+    }
 }
 
 
@@ -307,18 +307,18 @@ void handle_user_input(char *line, void *cbdata)
  */
 void process_inbound_udp(int in_sock, int out_sock) 
 {
-	struct sockaddr_in from;
-	socklen_t fromlen;
-	char buf[MAX_PACKET_LEN];
-	void *packet;
-	int len;
-	bt_peer_t *peer;
-	
-	fromlen = sizeof(from);
-	len = spiffy_recvfrom(in_sock, buf, MAX_PACKET_LEN, 0, (struct sockaddr *) &from, &fromlen);	
-	packet = bytes_to_packet(buf,len);
-	peer = bt_peer_info2(&config, &from);
-	packet_handler(out_sock, (void *)peer, packet);  
+    struct sockaddr_in from;
+    socklen_t fromlen;
+    char buf[MAX_PACKET_LEN];
+    void *packet;
+    int len;
+    bt_peer_t *peer;
+
+    fromlen = sizeof(from);
+    len = spiffy_recvfrom(in_sock, buf, MAX_PACKET_LEN, 0, (struct sockaddr *) &from, &fromlen);	
+    packet = bytes_to_packet(buf,len);
+    peer = bt_peer_info2(&config, &from);
+    packet_handler(out_sock, (void *)peer, packet);  
 }
 
 
@@ -331,52 +331,52 @@ void process_inbound_udp(int in_sock, int out_sock)
 void peer_run(bt_config_t *config) 
 {
     int sock, out_sock; 
-	struct sockaddr_in myaddr;
-	fd_set readfds;
-	struct user_iobuf *userbuf;
+    struct sockaddr_in myaddr;
+    fd_set readfds;
+    struct user_iobuf *userbuf;
     bt_peer_t *curr_peer;
 
     struct timeval tv;
     tv.tv_sec = 3;
     tv.tv_usec = 0; 
-  
-	if ((userbuf = create_userbuf()) == NULL) 
-	{
-    	perror("peer_run could not allocate userbuf");
-    	exit(-1);
-  	}
-  
-  	if ((sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_IP)) == -1 || (out_sock = socket(AF_INET, SOCK_DGRAM, 0)) == -1) 
-	{
-	    perror("peer_run could not create socket");
-	    exit(-1);
-	}
-  
-	bzero(&myaddr, sizeof(myaddr));
-	myaddr.sin_family = AF_INET;
-	myaddr.sin_addr.s_addr = htonl(INADDR_ANY);
-	myaddr.sin_port = htons(config->myport);
+
+    if ((userbuf = create_userbuf()) == NULL) 
+    {
+        perror("peer_run could not allocate userbuf");
+        exit(-1);
+    }
+
+    if ((sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_IP)) == -1 || (out_sock = socket(AF_INET, SOCK_DGRAM, 0)) == -1) 
+    {
+        perror("peer_run could not create socket");
+        exit(-1);
+    }
+
+    bzero(&myaddr, sizeof(myaddr));
+    myaddr.sin_family = AF_INET;
+    myaddr.sin_addr.s_addr = htonl(INADDR_ANY);
+    myaddr.sin_port = htons(config->myport);
     printf("bound to %s port %d\n",inet_ntoa(myaddr.sin_addr),ntohs(myaddr.sin_port));
-  	
-	if (bind(sock, (struct sockaddr *) &myaddr, sizeof(myaddr)) == -1) 
-	{
-	    perror("peer_run could not bind socket");
-	    exit(-1);
-	}
-	
-  
-	spiffy_init(config->identity, (struct sockaddr *)&myaddr, sizeof(myaddr));
-  	me = bt_peer_info(config, config->identity);
-	me->fetching_or_fetched = NULL;
+
+    if (bind(sock, (struct sockaddr *) &myaddr, sizeof(myaddr)) == -1) 
+    {
+        perror("peer_run could not bind socket");
+        exit(-1);
+    }
+
+
+    spiffy_init(config->identity, (struct sockaddr *)&myaddr, sizeof(myaddr));
+    me = bt_peer_info(config, config->identity);
+    me->fetching_or_fetched = NULL;
     me->curr_to = NULL;
 
     while (1)
-	{
-    	int nfds;
-    	FD_SET(STDIN_FILENO, &readfds);
-    	FD_SET(sock, &readfds);
+    {
+        int nfds;
+        FD_SET(STDIN_FILENO, &readfds);
+        FD_SET(sock, &readfds);
 
-    	nfds = select(sock+1, &readfds, NULL, NULL, &tv);
+        nfds = select(sock+1, &readfds, NULL, NULL, &tv);
 
         // Timeout
         if (nfds == 0)
@@ -385,11 +385,9 @@ void peer_run(bt_config_t *config)
             // retransmit.
             if (me->curr_to != NULL)
             {
-                fprintf(stderr, "timeout occured\n");
-
                 if (me->curr_to->num_data_retransmits == MAX_DATA_RETRANSMIT)
                 {
-                    fprintf(stderr, "Attempted 10 data retransmits, trage node is probably down.\n");
+                    fprintf(stderr, "Attempted 10 data retransmits, target node: %d is probably down.\n", me->curr_to->id);
                     peer_total_cleanup(me->curr_to);
                     destroy_entries(&send_buffer);
                     me->curr_to = NULL;
@@ -402,93 +400,90 @@ void peer_run(bt_config_t *config)
                 }
             }
 
-            //else
-            //{
-                // If timeout occurrced for none-data packets, retransmit the
-                // corresponding packet.
-                curr_peer = config->peers;
-                while (curr_peer != NULL)
+            // If timeout occurrced for none-data packets, retransmit the
+            // corresponding packet.
+            curr_peer = config->peers;
+            while (curr_peer != NULL)
+            {
+                if (curr_peer->id == config->identity)
                 {
-                    if (curr_peer->id == config->identity)
-                    {
-                        curr_peer = curr_peer->next;
-                        continue;
-                    }
-
-                    if (curr_peer->num_retransmits == MAX_RETRANSMITS)
-                    {
-                        fprintf(stderr, "Attempted 3 retransmits, target node is probably down.\n");
-                        peer_total_cleanup(curr_peer);
-                        me->curr_to = NULL;
-                        me->his_request = NULL;
-                    }
-
-                    if (curr_peer->pending_whohas != NULL)
-                    {
-                        retransmit_whohas(sock, curr_peer);
-                        curr_peer->num_retransmits++;
-                    }
-                    else if (curr_peer->pending_ihave != NULL)
-                    {
-                        retransmit_ihave(sock, curr_peer);
-                        curr_peer->num_retransmits++;
-                    }
-                    else if (curr_peer->pending_get != NULL)
-                    {
-                        retransmit_get(sock, curr_peer);
-                        curr_peer->num_retransmits++;
-                    }
-
-                    if (curr_peer->get_hash_id != PSUEDO_INF)
-                    {
-                        if (curr_peer->ack_timeout_counter == MAX_DATA_RETRANSMIT)
-                        {
-                            fprintf(stderr, "Sending  node is probably down.\n");
-                            me->chunks_fetched += curr_peer->num_chunks - curr_peer->chunks_fetched;
-
-                            if (me->chunks_fetched == me->num_chunks)
-                            {
-                                me->chunks_fetched = 0;
-                                me->num_chunks = 0;
-                            }
-                            peer_total_cleanup(curr_peer);
-                            destroy_entries(&(curr_peer->recv_buffer));
-                            destroy_fof(me);
-                        }
-                        else
-                        {
-                            curr_peer->ack_timeout_counter++;
-                        }
-                    }
-
                     curr_peer = curr_peer->next;
+                    continue;
                 }
-            //}
-                
+
+                if (curr_peer->num_retransmits == MAX_RETRANSMITS)
+                {
+                    fprintf(stderr, "Attempted 5 none-data packet retransmits, target node: %d is probably down.\n", curr_peer->id);
+                    peer_total_cleanup(curr_peer);
+                    me->curr_to = NULL;
+                    me->his_request = NULL;
+                }
+
+                if (curr_peer->pending_whohas != NULL)
+                {
+                    retransmit_whohas(sock, curr_peer);
+                    curr_peer->num_retransmits++;
+                }
+                else if (curr_peer->pending_ihave != NULL)
+                {
+                    retransmit_ihave(sock, curr_peer);
+                    curr_peer->num_retransmits++;
+                }
+                else if (curr_peer->pending_get != NULL)
+                {
+                    retransmit_get(sock, curr_peer);
+                    curr_peer->num_retransmits++;
+                }
+
+                if (curr_peer->get_hash_id != PSUEDO_INF)
+                {
+                    if (curr_peer->ack_timeout_counter == MAX_DATA_RETRANSMIT)
+                    {
+                        fprintf(stderr, "Sending  node: %d is probably down, no data packet for a while.\n", curr_peer->id);
+                        me->chunks_fetched += curr_peer->num_chunks - curr_peer->chunks_fetched;
+
+                        if (me->chunks_fetched == me->num_chunks)
+                        {
+                            me->chunks_fetched = 0;
+                            me->num_chunks = 0;
+                        }
+                        peer_total_cleanup(curr_peer);
+                        destroy_entries(&(curr_peer->recv_buffer));
+                        destroy_fof(me);
+                    }
+                    else
+                    {
+                        curr_peer->ack_timeout_counter++;
+                    }
+                }
+
+                curr_peer = curr_peer->next;
+            }
+
             tv.tv_sec = 3;
             tv.tv_usec = 0;
         }
 
-    	if (nfds > 0) 
-		{
+        if (nfds > 0) 
+        {
             tv.tv_sec = 3;
             tv.tv_usec = 0;
-    		
+
             if (FD_ISSET(sock, &readfds)) 
-			{
-				process_inbound_udp(sock,out_sock);
-                
-    		}
-    	  
-			if (FD_ISSET(STDIN_FILENO, &readfds)) 
-			{
-				process_user_input(STDIN_FILENO, userbuf, handle_user_input, "Currently unused");
-			}
-	    }
-	}
-	//close(sock);
+            {
+                process_inbound_udp(sock,out_sock);
+
+            }
+
+            if (FD_ISSET(STDIN_FILENO, &readfds)) 
+            {
+                process_user_input(STDIN_FILENO, userbuf, handle_user_input, "Currently unused");
+            }
+        }
+    }
+    //close(sock);
 }
-	
+
 
 /**
  * peer_total_cleanup -
@@ -503,7 +498,7 @@ void peer_total_cleanup(bt_peer_t *peer)
     peer->chunks_fetched = 0;
     peer->last_ack = 0;
     peer->num_dupacks = 0;
-    
+
     if (peer->his_request != NULL)
     {
         free(peer->his_request);
@@ -517,13 +512,13 @@ void peer_total_cleanup(bt_peer_t *peer)
     destroy_whohas_list(peer);
 
     peer->pending_whohas = NULL;
-    
+
     if (peer->pending_ihave != NULL)
     {
         free(peer->pending_ihave);
         peer->pending_ihave = NULL;
     }
-    
+
     if (peer->pending_get != NULL)
     {
         free(peer->pending_get);
