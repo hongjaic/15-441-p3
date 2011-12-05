@@ -104,6 +104,7 @@ typedef struct whohas_list_s
     whohas_entry_t *tail;
 } whohas_list_t;
 
+/*
 typedef struct bt_peer_s {
 	unsigned short  id;
     uint32_t num_chunks;
@@ -126,7 +127,12 @@ typedef struct bt_peer_s {
     whohas_packet_t * pending_whohas;
     ihave_packet_t *pending_ihave;
     get_packet_t *pending_get;
+    
     uint32_t num_retransmits;
+    uint32_t num_data_retransmits;
+    uint32_t ack_timeout_counter;
+
+    sliding_buffer recv_buffer;
 } bt_peer_t;
 
 
@@ -146,6 +152,7 @@ struct bt_config_s {
   bt_peer_t *peers;
 };
 typedef struct bt_config_s bt_config_t;
+*/
 
 #endif /* _PACKETS_H_ */
 

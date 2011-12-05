@@ -17,10 +17,7 @@
 #include <pthread.h>
 #include <unistd.h>
 
-#include "packets.h"
 #include "packet_handler.h"
-#include "bt_parse.h"
-#include "spiffy.h"
 
 
 int get_hash_id(char *hash);
@@ -486,6 +483,8 @@ void data_handler(int sock, bt_peer_t *peer, data_packet_t *data_p)
     int size;
 	ack_packet_t* ack;
 
+    peer->ack_timeout_counter = 0;
+
     // The get_hash_id being infinity means either no get request was made or
     // all chunks have already been retrieved. Ignore the data packet.
     if (peer->get_hash_id == PSUEDO_INF)
@@ -536,8 +535,8 @@ void data_handler(int sock, bt_peer_t *peer, data_packet_t *data_p)
 
     // Insert the data packet into the corresponding spot in the ack sliding
     // window and send out an ack.
-    insert_entry(&recv_buffer, time(NULL), data_p);
-    acknum = find_ack(&recv_buffer);
+    insert_entry(&(peer->recv_buffer), time(NULL), data_p);
+    acknum = find_ack(&(peer->recv_buffer));
     printf("acknum: %d\n", acknum);
     ack = create_ack(acknum);
     spiffy_sendto(sock, (void *)ack, ack->header.packet_len, 0, (struct sockaddr *)&(peer->addr), sizeof(peer->addr));
@@ -553,17 +552,25 @@ void data_handler(int sock, bt_peer_t *peer, data_packet_t *data_p)
         {
             get_next_chunk(sock, peer);
         }
-        // All chunks have been retrieved, esend out the next whohas.
+        // All chunks have been retrieved, send out the next whohas.
         else
         {
             peer->num_chunks = 0;
             peer->chunks_fetched = 0;
             free(peer->hehas);
             peer->hehas = NULL;
-            destroy_fof(me);
+            //destroy_fof(me);
             printf("FUCK\n");
 
             send_next_whohas(sock, peer);
+        }
+
+        if (me->num_chunks == me->chunks_fetched)
+        {
+            printf("FILE RECEIVE COMPLETE\n");
+            destroy_fof(me);
+            me->num_chunks = 0;
+            me->chunks_fetched = 0;
         }
     }
 
@@ -583,6 +590,8 @@ void data_handler(int sock, bt_peer_t *peer, data_packet_t *data_p)
 void ack_handler(int sock, bt_peer_t *peer, ack_packet_t *ack)
 {
     printf("ack_handler init\n");
+    printf("ack_number: %d\n", ack->header.ack_num);
+    peer->num_data_retransmits = 0;
 
     // Ignore ack if it is greater than the sequence number of last data packet
     // sent.
@@ -771,6 +780,9 @@ void init_whohas(bt_peer_t *peers, int num_chunks, char *hashes, int my_id)
     }
 
     peer = (bt_peer_t *)peers;
+
+    me->num_chunks = num_chunks;
+    me->chunks_fetched = 0;
     
     // Send the next whohas packet to all peers.
     while (peer != NULL)
@@ -1165,8 +1177,9 @@ void post_receive_cleanup(bt_peer_t *peer)
         free(tmphehas);
     }
     peer->chunks_fetched++;
+    me->chunks_fetched++;
     peer->get_hash_id = PSUEDO_INF;
-    destroy_entries(&recv_buffer);
+    destroy_entries(&(peer->recv_buffer));
 }
 
 

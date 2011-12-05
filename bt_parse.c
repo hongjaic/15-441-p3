@@ -179,6 +179,17 @@ void bt_parse_peer_list(bt_config_t *config) {
         node->pending_ihave = NULL;
         node->pending_get = NULL;
         node->num_retransmits = 0;
+        node->num_data_retransmits = 0;
+        node->ack_timeout_counter = 0;
+        
+        node->send_hash_id = PSUEDO_INF;
+        node->get_hash_id = PSUEDO_INF;
+
+        node->his_request = NULL;
+
+        node->recv_buffer.head = NULL;
+        node->recv_buffer.tail = NULL;
+        node->recv_buffer.num_entry = 0;
 
 	    config->peers = node;
 	}

@@ -22,6 +22,7 @@
 #include "constants.h"
 #include "sliding_buffer.h"
 #include "congestion_avoidance.h"
+#include "bt_structs.h"
 
 /* Configuration data structures */
 bt_config_t config;
@@ -31,7 +32,6 @@ char master_data_file[BT_FILENAME_LEN];
 char request_chunks_file[BT_FILENAME_LEN];
 
 /* Congestion controllers */
-sliding_buffer_t recv_buffer;
 sliding_buffer_t send_buffer;
 congestion_state_t state;
 
@@ -56,13 +56,9 @@ int main(int argc, char **argv)
     master_chunks_init(config.chunk_file);
 
     // Initialize the windows
-    recv_buffer.num_entry = 0;
-    recv_buffer.head = NULL;
-    recv_buffer.tail = NULL;
-
     send_buffer.num_entry = 0;
     send_buffer.head = NULL;
-    recv_buffer.tail = NULL;
+    send_buffer.tail = NULL;
 
     init_congestion_state(&state);
 
@@ -234,7 +230,19 @@ void process_cmd(char *chunkfile, char *outputfile)
 	char *hash, *hashes;
 	int offset = 0;
 	char buf[BUFLEN];
-	
+    char *ext;
+	char temp_chunkfile[BUFLEN];
+
+    strcpy(temp_chunkfile, chunkfile);
+    strtok(temp_chunkfile, ".");
+    ext = strtok(NULL, ".");
+
+    if (strcmp(ext, "chunks") != 0)
+    {
+        fprintf(stderr, "File name must have extension .chunks\n");
+        return;
+    }
+
     FILE *chunk_fd = fopen(chunkfile, "r");
 
     if (chunk_fd == NULL)
@@ -377,11 +385,25 @@ void peer_run(bt_config_t *config)
             // retransmit.
             if (me->curr_to != NULL)
             {
-                printf("timeout occured\n");
-                retransmit_data(sock, me->curr_to);
+                fprintf(stderr, "timeout occured\n");
+
+                if (me->curr_to->num_data_retransmits == MAX_DATA_RETRANSMIT)
+                {
+                    fprintf(stderr, "Attempted 10 data retransmits, trage node is probably down.\n");
+                    peer_total_cleanup(me->curr_to);
+                    destroy_entries(&send_buffer);
+                    me->curr_to = NULL;
+                    me->his_request = NULL;
+                }
+                else
+                {
+                    retransmit_data(sock, me->curr_to);
+                    me->curr_to->num_data_retransmits++;
+                }
             }
-            else
-            {
+
+            //else
+            //{
                 // If timeout occurrced for none-data packets, retransmit the
                 // corresponding packet.
                 curr_peer = config->peers;
@@ -395,8 +417,10 @@ void peer_run(bt_config_t *config)
 
                     if (curr_peer->num_retransmits == MAX_RETRANSMITS)
                     {
-                        printf("Attempted 3 retransmits, target node is probably down.\n");
+                        fprintf(stderr, "Attempted 3 retransmits, target node is probably down.\n");
                         peer_total_cleanup(curr_peer);
+                        me->curr_to = NULL;
+                        me->his_request = NULL;
                     }
 
                     if (curr_peer->pending_whohas != NULL)
@@ -415,9 +439,31 @@ void peer_run(bt_config_t *config)
                         curr_peer->num_retransmits++;
                     }
 
+                    if (curr_peer->get_hash_id != PSUEDO_INF)
+                    {
+                        if (curr_peer->ack_timeout_counter == MAX_DATA_RETRANSMIT)
+                        {
+                            fprintf(stderr, "Sending  node is probably down.\n");
+                            me->chunks_fetched += curr_peer->num_chunks - curr_peer->chunks_fetched;
+
+                            if (me->chunks_fetched == me->num_chunks)
+                            {
+                                me->chunks_fetched = 0;
+                                me->num_chunks = 0;
+                            }
+                            peer_total_cleanup(curr_peer);
+                            destroy_entries(&(curr_peer->recv_buffer));
+                            destroy_fof(me);
+                        }
+                        else
+                        {
+                            curr_peer->ack_timeout_counter++;
+                        }
+                    }
+
                     curr_peer = curr_peer->next;
                 }
-            }
+            //}
                 
             tv.tv_sec = 3;
             tv.tv_usec = 0;
@@ -461,6 +507,7 @@ void peer_total_cleanup(bt_peer_t *peer)
     if (peer->his_request != NULL)
     {
         free(peer->his_request);
+        peer->his_request = NULL;
     }
 
     peer->send_hash_id = PSUEDO_INF;
@@ -484,7 +531,7 @@ void peer_total_cleanup(bt_peer_t *peer)
     }
 
     peer->num_retransmits = 0;
+    peer->num_data_retransmits = 0;
+    peer->ack_timeout_counter = 0;
 }
-	
-
 

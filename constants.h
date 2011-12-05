@@ -13,6 +13,7 @@
 
 
 #define MAX_RETRANSMITS     3
+#define MAX_DATA_RETRANSMIT 10
 
 #define PSUEDO_INF          (1<<30)
 

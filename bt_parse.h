@@ -18,6 +18,8 @@
 #include <stdint.h>
 #include "packets.h"
 #include "constants.h"
+#include "sliding_buffer.h"
+#include "bt_structs.h"
 
 
 void bt_init(bt_config_t *c, int argc, char **argv);

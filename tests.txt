@@ -1,0 +1,42 @@
+CS 15-441 Computer Networks
+Project: Congestion Control with BitTorrent
+File: tests.txt
+
+Author: Hong Jai Cho <hongjaic@andrew.cmu.edu>, Raul Gonzalez <rggonzal>
+
+----------------------------------------------------------------------------------
+CP1
+----------------------------------------------------------------------------------
+
+----------------------------------------------------------------------------------
+
+
+
+----------------------------------------------------------------------------------
+CP2
+----------------------------------------------------------------------------------
+
+We tested sending and receiving files using variable toplologies. Some of them
+are:
+
+node --- node
+
+node --- node --- node
+
+
+[node node]----------[node node]
+                |
+                |
+                |
+           [node node]
+
+To make sure that our system works in edge cases, we tried out many different
+actions such as:
+
+1) Setting up only onde node and makding GET requests, to confirm that after
+three transmission of none-data packet that the peer nodes are assumed to be
+dead.
+
+2) Killing a peer node while data packets are being transmitted.
+
+----------------------------------------------------------------------------------
